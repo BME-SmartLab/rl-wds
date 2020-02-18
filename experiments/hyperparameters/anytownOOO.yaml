@@ -1,0 +1,22 @@
+env:
+    waterNet        : anytown
+    speedIncrement  : .05
+    episodeLen      : 40
+    pumpGroups      : [['78', '79']]
+    totalDemandLo   : .3
+    totalDemandHi   : 1.1
+    resetOrigDemands    : True
+    resetOrigPumpSpeeds : True
+
+model:
+    layers  : [24,6]
+    restore : None
+
+evaluation:
+    dbName      : anytown_orig
+
+training:
+    initLrnRate : .001
+    totalSteps  : 25000
+    gamma       : .99
+    trnFreq     : 1

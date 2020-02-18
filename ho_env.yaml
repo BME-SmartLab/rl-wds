@@ -1,0 +1,21 @@
+name: rlho
+dependencies:
+- python=3.7
+- mkl
+- numpy
+- mpi4py
+- scikit-learn
+- pandas
+- pytables
+- pyyaml
+- pytest
+- tqdm
+- psycopg2
+- pip
+- pip:
+    - deap
+    - optuna
+    - gym
+    - epynet
+    - stable-baselines
+    - tensorflow==1.14

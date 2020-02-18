@@ -1,0 +1,24 @@
+env:
+    waterNet        : d-town
+    speedIncrement  : .05
+    episodeLen      : 200
+    pumpGroups      : [['PU1','PU2','PU3'],['PU4','PU5'],['PU6','PU7'],['PU8','PU9'],['PU10','PU11']]
+    totalDemandLo   : .3
+    totalDemandHi   : 1.1
+    resetOrigDemands    : False
+    resetOrigPumpSpeeds : False
+
+model:
+    layers  : [256, 128, 12]
+    restore : None
+
+evaluation:
+    dbName      : dtown_rnd
+
+training:
+    initLrnRate     : .0001
+    totalSteps      : 1000000
+    gamma           : .9
+    batchSize       : 64
+    learningStarts  : 10000
+    bufferSize      : 350000

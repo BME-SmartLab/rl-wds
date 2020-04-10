@@ -4,5 +4,6 @@ dependencies:
 - jupyter
 - networkx
 - plotly
+- appmode
 - pip:
     - epynet

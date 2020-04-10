@@ -1,0 +1,9 @@
+name: rlwds-demo
+dependencies:
+- python=3.7
+- pip
+- jupyter
+- networkx
+- plotly
+- pip:
+    - epynet

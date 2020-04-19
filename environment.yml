@@ -4,3 +4,4 @@ dependencies:
 - appmode
 - pip:
     - epynet
+    - ipython-blocking

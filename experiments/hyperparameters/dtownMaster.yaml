@@ -9,14 +9,16 @@ env:
     resetOrigPumpSpeeds : True
 
 model:
-    layers  : [128,32]
+    layers  : [256, 128, 12]
     restore : None
 
 evaluation:
-    dbName  : dtown_tst
+    dbName      : dtown_rnd
 
 training:
-    initLrnRate : .001
-    totalSteps  : 1500000
-    gamma       : .9
-    trnFreq     : 1
+    initLrnRate     : .0001
+    totalSteps      : 1000000
+    gamma           : .9
+    batchSize       : 64
+    learningStarts  : 10000
+    bufferSize      : 350000

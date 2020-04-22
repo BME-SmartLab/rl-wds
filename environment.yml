@@ -1,7 +1,19 @@
+name: demo
+channels:
+- conda-forge
 dependencies:
-- pip
+- python=3.7
+- numpy
+- scikit-learn
+- pandas
+- pytables
+- pyyaml
+- tensorflow=1.14
 - plotly
 - appmode
+- pip
 - pip:
+    - gym
     - epynet
+    - stable-baselines
     - ipython-blocking

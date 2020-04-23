@@ -1,5 +1,4 @@
 # -* coding: utf-8 -*-
-import argparse
 import os
 import yaml
 import numpy as np
@@ -10,17 +9,15 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from stable_baselines import DQN
 from wdsEnv import wds
 
-parser  = argparse.ArgumentParser()
-parser.add_argument('--params', default='anytownMaster', help="Name of the YAML file.")
-args    = parser.parse_args()
+hyperparams_fn  = 'anytownMaster'
+model_fn        = 'anytownHO1-best'
 
-pathToRoot      = os.path.dirname(os.path.realpath(__file__))
-pathToExp       = os.path.join(pathToRoot, 'experiments')
-pathToParams    = os.path.join(pathToExp, 'hyperparameters', args.params+'.yaml')
+pathToRoot  = os.path.dirname(os.path.realpath(__file__))
+pathToExp   = os.path.join(pathToRoot, 'experiments')
+pathToParams= os.path.join(pathToExp, 'hyperparameters', hyperparams_fn+'.yaml')
 with open(pathToParams, 'r') as fin:
     hparams = yaml.load(fin, Loader=yaml.Loader)
-pathToModels    = os.path.join(pathToExp, 'models')
-pathToSceneDB   = os.path.join(pathToExp, hparams['evaluation']['dbName']+'_db.h5')
+pathToModel = os.path.join(pathToExp, 'models', model_fn+'.zip')
 
 env = wds(
         wds_name        = hparams['env']['waterNet']+'_master',
@@ -33,33 +30,7 @@ env = wds(
         reset_orig_demands      = hparams['env']['resetOrigDemands']
 )
 
-def play_scenes(scenes):
-    cummulated_reward   = 0
-    for scene_id in range(len(scenes)):
-        env.wds.junctions.basedemand    = scenes.loc[scene_id]
-        obs     = env.reset(training=False)
-        rewards = np.empty(
-                    shape = (env.episodeLength,),
-                    dtype = np.float32)
-        rewards.fill(np.nan)
-        pump_speeds = np.empty(
-                        shape   = (env.episodeLength, env.dimensions),
-                        dtype   = np.float32)
-        while not env.done:
-            act, _              = model.predict(obs, deterministic=True)
-            obs, reward, _, _   = env.step(act, training=False)
-            pump_speeds[env.steps-1, :] = env.get_pump_speeds()
-            rewards[env.steps-1]        = reward
-        cummulated_reward   += reward
-
-    avg_reward  = cummulated_reward / (scene_id+1)
-    print('Average reward for {:} scenes: {:.3f}.'.format(scene_id+1, avg_reward))
-    obs = env.reset(training=True)
-    return avg_reward
-
-model_path  = os.path.join(pathToModels, 'anytownHO1-best.zip')
-print(model_path)
-model   = DQN.load(model_path)
+model   = DQN.load(pathToModel)
 
 obs = env.reset()
 while not env.done:

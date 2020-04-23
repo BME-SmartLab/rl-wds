@@ -13,7 +13,7 @@ model:
     restore : None
 
 evaluation:
-    dbName      : anytown_tst
+    dbName      : anytown_rnd
 
 training:
     initLrnRate : .001

@@ -1,14 +1,13 @@
 # -* coding: utf-8 -*-
 import argparse
 import os
-import glob
 import yaml
 import numpy as np
-import pandas as pd
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import tensorflow as tf
-from stable_baselines.deepq.policies import FeedForwardPolicy
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from stable_baselines import DQN
-from stable_baselines.common.schedules import PiecewiseSchedule
 from wdsEnv import wds
 
 parser  = argparse.ArgumentParser()
@@ -20,6 +19,7 @@ pathToExp       = os.path.join(pathToRoot, 'experiments')
 pathToParams    = os.path.join(pathToExp, 'hyperparameters', args.params+'.yaml')
 with open(pathToParams, 'r') as fin:
     hparams = yaml.load(fin, Loader=yaml.Loader)
+pathToModels    = os.path.join(pathToExp, 'models')
 pathToSceneDB   = os.path.join(pathToExp, hparams['evaluation']['dbName']+'_db.h5')
 
 env = wds(
@@ -33,8 +33,7 @@ env = wds(
         reset_orig_demands      = hparams['env']['resetOrigDemands']
 )
 
-def play_scenes(scenes, history, path_to_history, tst=False):
-    global best_metric
+def play_scenes(scenes):
     cummulated_reward   = 0
     for scene_id in range(len(scenes)):
         env.wds.junctions.basedemand    = scenes.loc[scene_id]
@@ -53,29 +52,17 @@ def play_scenes(scenes, history, path_to_history, tst=False):
             rewards[env.steps-1]        = reward
         cummulated_reward   += reward
 
-        if not tst:
-            df_view = history.loc[step_id].loc[scene_id].copy(deep=False)
-        else:
-            df_view = history.loc[scene_id].copy(deep=False)
-        df_view['lastReward']   = rewards[env.steps-1]
-        df_view['bestReward']   = np.nanmax(rewards)
-        df_view['worstReward']  = np.nanmin(rewards)
-        df_view['nFail']        = np.count_nonzero(rewards==0)
-        df_view['nBump']        = env.n_bump
-        df_view['nSiesta']      = env.n_siesta
-        df_view['nStep']        = env.steps
-        df_view['explorationFactor']= model.exploration.value(step_id)
-        for i in range(env.dimensions):
-            df_view['speedOfGrp'+str(i)] = pump_speeds[env.steps-1, i]
     avg_reward  = cummulated_reward / (scene_id+1)
     print('Average reward for {:} scenes: {:.3f}.'.format(scene_id+1, avg_reward))
-    if (not tst) and (avg_reward > best_metric):
-        print('Average reward improved {:.3f} --> {:.3f}.\nSaving...'
-            .format(best_metric, avg_reward))
-        best_metric = avg_reward
-        model.save(pathToBestModel)
     obs = env.reset(training=True)
-    history.to_hdf(path_to_history, key=runId, mode='a')
     return avg_reward
 
-model   = DQN.load('dummy')
+model_path  = os.path.join(pathToModels, 'anytownHO1-best.zip')
+print(model_path)
+model   = DQN.load(model_path)
+
+obs = env.reset()
+while not env.done:
+    act, _              = model.predict(obs, deterministic=True)
+    obs, reward, _, _   = env.step(act, training=False)
+    print(reward)

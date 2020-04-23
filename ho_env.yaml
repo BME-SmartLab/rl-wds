@@ -6,6 +6,8 @@ dependencies:
 - mpi4py
 - scikit-learn
 - pandas
+- tensorflow==1.14
+- gast=0.2
 - pytables
 - pyyaml
 - pytest
@@ -18,4 +20,3 @@ dependencies:
     - gym
     - epynet
     - stable-baselines
-    - tensorflow==1.14

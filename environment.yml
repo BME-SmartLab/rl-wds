@@ -8,6 +8,7 @@ dependencies:
 - pytables
 - pyyaml
 - tensorflow=1.14
+- gast=0.2
 - plotly
 - appmode
 - pip

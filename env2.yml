@@ -1,0 +1,20 @@
+name: demo2
+channels:
+- conda-forge
+- holoviz
+dependencies:
+- python=3.7
+- numpy
+- scikit-learn
+- pyyaml
+- jupyter
+- bokeh
+- tensorflow=1.14
+- panel
+- pandas
+- plotly
+- pip
+- pip:
+    - gym
+    - epynet
+    - stable-baselines

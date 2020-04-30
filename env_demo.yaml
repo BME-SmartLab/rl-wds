@@ -1,4 +1,4 @@
-name: demo2
+name: rlwds-demo
 channels:
 - conda-forge
 - holoviz
@@ -12,7 +12,6 @@ dependencies:
 - tensorflow=1.14
 - panel
 - pandas
-- plotly
 - pip
 - pip:
     - gym

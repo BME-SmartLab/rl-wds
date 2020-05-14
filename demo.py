@@ -56,7 +56,7 @@ def build_plot_from_data(data, min_prop=None, max_prop=None):
     fig = pn.pane.Bokeh(fig, width=400, height=300)
     return fig
 
-class load_environment(param.Parameterized):
+class environment_wrapper(param.Parameterized):
     sel_wds     = param.ObjectSelector(
         default = "Anytown",
         objects = ["Anytown", "D-Town"]
@@ -74,6 +74,8 @@ class load_environment(param.Parameterized):
     
     def __init__(self):
         self.loaded_wds = ''
+        self.head_lmt_lo= 15
+        self.head_lmt_hi= 120
 
     def _assemble_junc_coordinates(self, wds):
         junc_x = []
@@ -157,26 +159,44 @@ class load_environment(param.Parameterized):
 
 class optimize_speeds(param.Parameterized):
     act_opti    = param.Action(
-        lambda x: x.param.trigger('act_opti'), label='Optimize pump speeds')
+        lambda x: x.param.trigger('act_opti'),
+        label='Optimize pump speeds'
+        )
+    play_button = param.Action(
+        lambda x: x.param.trigger('play_button'),
+        label   = 'Play'
+        )
 
     def __init__(self):
         self.rew_dqn    = 0
         self.rew_nm     = 0
         self.hist_dqn   = []
         self.hist_nm    = []
+        self.hist_idx_nm    = 0
+        self.hist_idx_dqn   = 0
+        self.nm_plot_id     = 0
+        self.dqn_plot_id     = 0
+        self.playing = False
+
+        self.store_bc()
+        self.call_nm()
+        self.rew_nm = wrapper.env.get_state_value()
+        self.nm_dta = assemble_plot_data(wrapper.env.wds.junctions.head)
+        self.nm_plot= build_plot_from_data(self.nm_dta)
+        self.restore_bc()
 
     def call_dqn(self):
         wrapper.env.wds.solve()
         wrapper.env.steps   = 0
         wrapper.env.done    = False
-        obs = wrapper.env.get_observation()
-        self.hist_dqn       = [wrapper.env.wds.junctions.head]
+        obs             = wrapper.env.get_observation()
+        self.hist_dqn   = [wrapper.env.wds.junctions.head]
         while not wrapper.env.done:
             act, _              = wrapper.model.predict(obs, deterministic=True)
             obs, reward, _, _   = wrapper.env.step(act, training=False)
             self.hist_dqn.append(wrapper.env.wds.junctions.head)
 
-    def callback(self, fun):
+    def callback_nm(self, fun):
         self.hist_nm.append(wrapper.env.wds.junctions.head)
 
     def call_nm(self):
@@ -189,9 +209,10 @@ class optimize_speeds(param.Parameterized):
         self.hist_nm    = [wrapper.env.wds.junctions.head]
         result  = nm(
             wrapper.env.reward_to_scipy,
-            init_guess, method='Nelder-Mead',
-            options=options,
-            callback=self.callback
+            init_guess,
+            method  = 'Nelder-Mead',
+            options = options,
+            callback= self.callback_nm
             )
         self.nm_evals   = result.nit
 
@@ -218,10 +239,53 @@ class optimize_speeds(param.Parameterized):
         self.store_bc()
         self.call_nm()
         self.rew_nm = wrapper.env.get_state_value()
-        plot_data   = assemble_plot_data(wrapper.env.wds.junctions.head)
-        plot        = build_plot_from_data(plot_data)
+        self.nm_dta = assemble_plot_data(wrapper.env.wds.junctions.head)
+        plot        = build_plot_from_data(self.nm_dta)
         self.restore_bc()
         return plot
+
+
+
+
+
+    def animate_nm_plot(self):
+        if self.hist_idx_nm == 0:
+            self.store_bc()
+            self.call_nm()
+            self.rew_nm = wrapper.env.get_state_value()
+            self.nm_dta = assemble_plot_data(wrapper.env.wds.junctions.head)
+            self.nm_plot= build_plot_from_data(self.nm_dta)
+            self.restore_bc()
+
+        self.nm_dta.data = {
+            'x': wrapper.junc_coords['x'],
+            'y': wrapper.junc_coords['y'],
+            'junc_prop': optimizer.hist_nm[self.hist_idx_nm]
+        }
+        self.hist_idx_nm    += 1
+        if self.hist_idx_nm == len(optimizer.hist_nm):
+            self.hist_idx_nm    = 0
+            curdoc().remove_periodic_callback(self.nm_plot_id)
+            self.playing    = False
+#        return self.nm_plot
+
+    @param.depends('play_button')
+    def play_animation_nm(self):
+#        if self.play_button.label == 'Play':
+        if not self.playing:
+            self.playing = True
+#            self.play_button.label = 'Pause'
+            self.nm_plot_id = curdoc().add_periodic_callback(self.animate_nm_plot, 500)
+        else:
+            #self.play_button.label = 'Play'
+            self.playing = False
+            curdoc().remove_periodic_callback(self.nm_plot_id)
+        return self.nm_plot
+
+
+
+
+
 
     @param.depends('act_opti')
     def read_dqn_rew(self):
@@ -239,18 +303,24 @@ class optimize_speeds(param.Parameterized):
     def read_nm_evals(self):
         return self.nm_evals
 
-wrapper = load_environment()
+wrapper = environment_wrapper()
 pn.Column(
     '# Loading the water distribution system',
     pn.Row(
-        pn.Column(pn.panel(wrapper.param, show_labels=False, show_name=False, margin=0,
-                           widgets = {
-                               'sel_dmd': pn.widgets.RadioButtonGroup,
-                               'sel_spd': pn.widgets.RadioButtonGroup
-                           }),
-        ),
+        pn.Column(
+            pn.panel(
+                wrapper.param,
+                show_labels = False,
+                show_name   = False,
+                margin      = 0,
+                widgets = {
+                    'sel_dmd': pn.widgets.RadioButtonGroup,
+                    'sel_spd': pn.widgets.RadioButtonGroup
+                    }
+                ),
+            ),
         wrapper.load_wds
-    )
+        )
 ).servable()
 
 optimizer = optimize_speeds()
@@ -259,40 +329,45 @@ pn.Column(
     pn.panel(optimizer.param, show_labels=False, show_name=False, margin=0),
     pn.Row(
         optimizer.plot_dqn,
-        optimizer.plot_nm
-    ),
+        optimizer.plot_nm,
+        ),
     pn.Row(
         pn.WidgetBox(optimizer.read_dqn_rew, width=200),
         pn.WidgetBox(optimizer.read_dqn_evals, width=200),
         pn.WidgetBox(optimizer.read_nm_rew, width=200),
-        pn.WidgetBox(optimizer.read_nm_evals, width=200)
-    )
+        pn.WidgetBox(optimizer.read_nm_evals, width=200),
+        ),
+    pn.Row(
+        #optimizer.animate_nm_plot
+        #optimizer.play_animation_nm
+        )
 ).servable()
 
-data = cds(data={
-    'x': wrapper.junc_coords['x'],
-    'y': wrapper.junc_coords['y'],
-    'head': optimizer.hist_nm[0]
-    }
-)
-mapper = linear_cmap(
-    field_name = 'head',
-    palette = "Viridis10",
-    low = 40,
-    high = 80
-)
-fig = figure()
-edges = fig.line(wrapper.pipe_coords['x'], wrapper.pipe_coords['y'])
-nodes = fig.circle(x='x', y='y', color=mapper, source=data, size=12)
+#data = cds(data={
+#    'x': wrapper.junc_coords['x'],
+#    'y': wrapper.junc_coords['y'],
+#    'head': optimizer.hist_nm[0]
+#    }
+#)
+#mapper = linear_cmap(
+#    field_name = 'head',
+#    palette = "Viridis10",
+#    low = 40,
+#    high = 80
+#)
+#fig = figure()
+#edges = fig.line(wrapper.pipe_coords['x'], wrapper.pipe_coords['y'])
+#nodes = fig.circle(x='x', y='y', color=mapper, source=data, size=12)
+#
 
 mlp = 0
 call_id = 0
 def animate_plot():
     global mlp, data, call_id
-    data.data = {
+    optimizer.nm_dta.data = {
         'x': wrapper.junc_coords['x'],
         'y': wrapper.junc_coords['y'],
-        'head': optimizer.hist_nm[mlp]
+        'junc_prop': optimizer.hist_nm[mlp]
     }
     mlp += 1
     if mlp == len(optimizer.hist_nm):
@@ -311,4 +386,4 @@ def play_animation():
 
 button = Button(label='Play', width=60)
 button.on_click(play_animation)
-pn.Row(fig, button).servable()
+pn.Row(button).servable()

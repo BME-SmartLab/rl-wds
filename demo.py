@@ -9,7 +9,6 @@ import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from stable_baselines import DQN
 from wdsEnv import wds
-#from opti_algorithms import nm
 from scipy.optimize import minimize as nm
 
 import panel as pn
@@ -21,44 +20,57 @@ from bokeh.models import ColumnDataSource as cds
 from bokeh.models import ColorBar, LinearColorMapper, Button
 pn.extension()
 
-def build_plot(junc_coords, pipe_coords, nodal_property, min_prop=None, max_prop=None):
-    data = cds(data={
-        'x': junc_coords['x'],
-        'y': junc_coords['y'],
-        'head': nodal_property
-        }
-    )
+def assemble_plot_data(junc_prop):
+    plot_data = cds(
+        data = {
+            'x':    wrapper.junc_coords['x'],
+            'y':    wrapper.junc_coords['y'],
+            'junc_prop':    junc_prop
+            }
+        )
+    return plot_data
 
+def build_plot_from_data(data, min_prop=None, max_prop=None):
     if not min_prop:
-        min_prop = min(nodal_property)
+        min_prop = min(data.data['junc_prop'])
     if not max_prop:
-        max_prop = max(nodal_property)
+        max_prop = max(data.data['junc_prop'])
+
     mapper = linear_cmap(
-        field_name = 'head',
-        palette = "Viridis10",
-        low = min_prop,
-        high = max_prop
-    )
+        field_name  = 'junc_prop',
+        palette     = "Viridis10",
+        low         = min_prop,
+        high        = max_prop
+        )
     cmapper = LinearColorMapper(
         palette = "Viridis10",
-        low = min_prop,
-        high = max_prop
-    )
-    fig = figure()
-    edges = fig.line(pipe_coords['x'], pipe_coords['y'])
-    nodes = fig.circle(x='x', y='y', color=mapper, source=data, size=12)
-    
-    color_bar = ColorBar(color_mapper=cmapper)
+        low     = min_prop,
+        high    = max_prop
+        )
+
+    fig         = figure()
+    edges       = fig.line(wrapper.pipe_coords['x'], wrapper.pipe_coords['y'])
+    nodes       = fig.circle(x='x', y='y', color=mapper, source=data, size=12)
+    color_bar   = ColorBar(color_mapper=cmapper)
     fig.add_layout(color_bar, 'right')
-    
     fig = pn.pane.Bokeh(fig, width=400, height=300)
     return fig
 
 class load_environment(param.Parameterized):
-    sel_wds = param.ObjectSelector(default="Anytown", objects=["Anytown", "D-Town"])
-    sel_dmd = param.ObjectSelector(default="Original demands", objects=['Original demands', 'Randomized demands'])
-    sel_spd = param.ObjectSelector(default="Original speeds", objects=['Original speeds', 'Randomized speeds'])
-    act_load = param.Action(lambda x: x.param.trigger('act_load'), label='Load water distribution system')
+    sel_wds     = param.ObjectSelector(
+        default = "Anytown",
+        objects = ["Anytown", "D-Town"]
+        )
+    sel_dmd     = param.ObjectSelector(
+        default = "Original demands",
+        objects = ['Original demands', 'Randomized demands']
+        )
+    sel_spd     = param.ObjectSelector(
+        default = "Original speeds",
+        objects = ['Original speeds', 'Randomized speeds']
+        )
+    act_load    = param.Action(
+        lambda x: x.param.trigger('act_load'), label='Load water distribution system')
     
     def __init__(self):
         self.loaded_wds = ''
@@ -97,15 +109,19 @@ class load_environment(param.Parameterized):
             if wds_name == 'Anytown':
                 hyperparams_fn  = 'anytownMaster'
                 model_fn        = 'anytownHO1-best'
-                self.dmd_lo = 0
-                self.dmd_hi = 250
+                self.dmd_lo     = 0
+                self.dmd_hi     = 250
             elif wds_name == 'D-Town':
                 hyperparams_fn  = 'dtownMaster'
                 model_fn        = 'dtownHO1-best'
-                self.dmd_lo = 0
-                self.dmd_hi = 10
+                self.dmd_lo     = 0
+                self.dmd_hi     = 10
 
-            pathToParams = os.path.join('experiments', 'hyperparameters', hyperparams_fn+'.yaml')
+            pathToParams = os.path.join(
+                'experiments',
+                'hyperparameters',
+                hyperparams_fn+'.yaml'
+                )
             with open(pathToParams, 'r') as fin:
                 self.hparams = yaml.load(fin, Loader=yaml.Loader)
             self.pathToModel = os.path.join('experiments', 'models', model_fn+'.zip')
@@ -114,15 +130,15 @@ class load_environment(param.Parameterized):
             self.loaded_wds = wds_name
 
         self.env = wds(
-                wds_name        = self.hparams['env']['waterNet']+'_master',
-                speed_increment = self.hparams['env']['speedIncrement'],
-                episode_len     = self.hparams['env']['episodeLen'],
-                pump_groups     = self.hparams['env']['pumpGroups'],
-                total_demand_lo = self.hparams['env']['totalDemandLo'],
-                total_demand_hi = self.hparams['env']['totalDemandHi'],
-                reset_orig_pump_speeds  = resetOrigPumpSpeeds,
-                reset_orig_demands      = resetOrigDemands
-        )
+            wds_name        = self.hparams['env']['waterNet']+'_master',
+            speed_increment = self.hparams['env']['speedIncrement'],
+            episode_len     = self.hparams['env']['episodeLen'],
+            pump_groups     = self.hparams['env']['pumpGroups'],
+            total_demand_lo = self.hparams['env']['totalDemandLo'],
+            total_demand_hi = self.hparams['env']['totalDemandHi'],
+            reset_orig_pump_speeds  = resetOrigPumpSpeeds,
+            reset_orig_demands      = resetOrigDemands
+            )
         self.junc_coords = self._assemble_junc_coordinates(self.env.wds)
         self.pipe_coords = self._assemble_pipe_coords(self.env.wds)
 
@@ -134,65 +150,27 @@ class load_environment(param.Parameterized):
             self.sel_spd == 'Original speeds'
         )
         self.env.reset(training=True)
-        self.plot = build_plot(
-            self.junc_coords,
-            self.pipe_coords,
-            self.env.wds.junctions.basedemand,
-            self.dmd_lo,
-            self.dmd_hi
-        )
+
+        plot_data   = assemble_plot_data(wrapper.env.wds.junctions.head)
+        self.plot   = build_plot_from_data(plot_data, self.dmd_lo, self.dmd_hi)
         return self.plot
 
 class optimize_speeds(param.Parameterized):
-    act_opti = param.Action(lambda x: x.param.trigger('act_opti'), label='Optimize pump speeds')
+    act_opti    = param.Action(
+        lambda x: x.param.trigger('act_opti'), label='Optimize pump speeds')
 
     def __init__(self):
-        self.rew_dqn = 0
-        self.rew_nm = 0
-        self.hist_dqn = []
-        self.hist_nm = []
+        self.rew_dqn    = 0
+        self.rew_nm     = 0
+        self.hist_dqn   = []
+        self.hist_nm    = []
 
-    def assemble_plot_data(self, junc_prop):
-        plot_data = cds(data={
-            'x': wrapper.junc_coords['x'],
-            'y': wrapper.junc_coords['y'],
-            'junc_prop': junc_prop
-            }
-        )
-        return plot_data
-
-    def build_plot(self, data, min_prop=None, max_prop=None):
-        if not min_prop:
-            min_prop = min(data.data['junc_prop'])
-        if not max_prop:
-            max_prop = max(data.data['junc_prop'])
-        mapper = linear_cmap(
-            field_name = 'junc_prop',
-            palette = "Viridis10",
-            low = min_prop,
-            high = max_prop
-        )
-        cmapper = LinearColorMapper(
-            palette = "Viridis10",
-            low = min_prop,
-            high = max_prop
-        )
-        fig = figure()
-        edges = fig.line(wrapper.pipe_coords['x'], wrapper.pipe_coords['y'])
-        nodes = fig.circle(x='x', y='y', color=mapper, source=data, size=12)
-
-        color_bar = ColorBar(color_mapper=cmapper)
-        fig.add_layout(color_bar, 'right')
-
-        fig = pn.pane.Bokeh(fig, width=400, height=300)
-        return fig
-    
     def call_dqn(self):
         wrapper.env.wds.solve()
-        wrapper.env.steps = 0
-        wrapper.env.done = False
+        wrapper.env.steps   = 0
+        wrapper.env.done    = False
         obs = wrapper.env.get_observation()
-        self.hist_dqn = [wrapper.env.wds.junctions.head]
+        self.hist_dqn       = [wrapper.env.wds.junctions.head]
         while not wrapper.env.done:
             act, _              = wrapper.model.predict(obs, deterministic=True)
             obs, reward, _, _   = wrapper.env.step(act, training=False)
@@ -208,31 +186,30 @@ class optimize_speeds(param.Parameterized):
             'xatol' : .005,
             'fatol' : .01}
         wrapper.env.wds.solve()
-        self.hist_nm = [wrapper.env.wds.junctions.head]
-        result      = nm(
+        self.hist_nm    = [wrapper.env.wds.junctions.head]
+        result  = nm(
             wrapper.env.reward_to_scipy,
             init_guess, method='Nelder-Mead',
             options=options,
             callback=self.callback
-        )
-        self.nm_evals = result.nit
+            )
+        self.nm_evals   = result.nit
 
     def store_bc(self):
-        self.orig_demands = wrapper.env.wds.junctions.basedemand
-        self.orig_speeds = wrapper.env.wds.pumps.speed
+        self.orig_demands   = wrapper.env.wds.junctions.basedemand
+        self.orig_speeds    = wrapper.env.wds.pumps.speed
 
     def restore_bc(self):
-        wrapper.env.wds.junctions.basedemand = self.orig_demands
-        wrapper.env.wds.pumps.speed = self.orig_speeds
+        wrapper.env.wds.junctions.basedemand    = self.orig_demands
+        wrapper.env.wds.pumps.speed             = self.orig_speeds
 
     @param.depends('act_opti')
     def plot_dqn(self):
         self.store_bc()
         self.call_dqn()
-        self.rew_dqn = wrapper.env.get_state_value()
-        plot_data = self.assemble_plot_data(wrapper.env.wds.junctions.head)
-        plot = self.build_plot(plot_data)
-        #plot = build_plot(wrapper.junc_coords, wrapper.pipe_coords, wrapper.env.wds.junctions.head)
+        self.rew_dqn    = wrapper.env.get_state_value()
+        plot_data       = assemble_plot_data(wrapper.env.wds.junctions.head)
+        plot            = build_plot_from_data(plot_data)
         self.restore_bc()
         return plot
 
@@ -241,7 +218,8 @@ class optimize_speeds(param.Parameterized):
         self.store_bc()
         self.call_nm()
         self.rew_nm = wrapper.env.get_state_value()
-        plot = build_plot(wrapper.junc_coords, wrapper.pipe_coords, wrapper.env.wds.junctions.head)
+        plot_data   = assemble_plot_data(wrapper.env.wds.junctions.head)
+        plot        = build_plot_from_data(plot_data)
         self.restore_bc()
         return plot
 
@@ -332,6 +310,5 @@ def play_animation():
         curdoc().remove_periodic_callback(call_id)
 
 button = Button(label='Play', width=60)
-#button.on_click(animate_plot)
 button.on_click(play_animation)
 pn.Row(fig, button).servable()

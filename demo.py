@@ -4,6 +4,7 @@ import yaml
 import time
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+import numpy as np
 from epynet import Network
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -162,28 +163,14 @@ class optimize_speeds(param.Parameterized):
         lambda x: x.param.trigger('act_opti'),
         label='Optimize pump speeds'
         )
-    play_button = param.Action(
-        lambda x: x.param.trigger('play_button'),
-        label   = 'Play'
-        )
 
     def __init__(self):
         self.rew_dqn    = 0
         self.rew_nm     = 0
         self.hist_dqn   = []
         self.hist_nm    = []
-        self.hist_idx_nm    = 0
-        self.hist_idx_dqn   = 0
-        self.nm_plot_id     = 0
-        self.dqn_plot_id     = 0
-        self.playing = False
-
-        self.store_bc()
-        self.call_nm()
-        self.rew_nm = wrapper.env.get_state_value()
-        self.nm_dta = assemble_plot_data(wrapper.env.wds.junctions.head)
-        self.nm_plot= build_plot_from_data(self.nm_dta)
-        self.restore_bc()
+        self.hist_val_nm= []
+        self_hist_fail_counter_nm   = []
 
     def call_dqn(self):
         wrapper.env.wds.solve()
@@ -198,6 +185,10 @@ class optimize_speeds(param.Parameterized):
 
     def callback_nm(self, fun):
         self.hist_nm.append(wrapper.env.wds.junctions.head)
+        self.hist_val_nm.append(wrapper.env.get_state_value())
+        invalid_heads_count = (np.count_nonzero(wrapper.env.wds.junctions.head < wrapper.head_lmt_lo) +
+            np.count_nonzero(wrapper.env.wds.junctions.head > wrapper.head_lmt_hi))
+        self.hist_fail_counter_nm.append(invalid_heads_count)
 
     def call_nm(self):
         init_guess  = wrapper.env.dimensions * [1.]
@@ -207,6 +198,10 @@ class optimize_speeds(param.Parameterized):
             'fatol' : .01}
         wrapper.env.wds.solve()
         self.hist_nm    = [wrapper.env.wds.junctions.head]
+        self.hist_val_nm= [wrapper.env.get_state_value()]
+        invalid_heads_count = (np.count_nonzero(wrapper.env.wds.junctions.head < wrapper.head_lmt_lo) +
+            np.count_nonzero(wrapper.env.wds.junctions.head > wrapper.head_lmt_hi))
+        self.hist_fail_counter_nm = [invalid_heads_count]
         result  = nm(
             wrapper.env.reward_to_scipy,
             init_guess,
@@ -243,49 +238,6 @@ class optimize_speeds(param.Parameterized):
         plot        = build_plot_from_data(self.nm_dta)
         self.restore_bc()
         return plot
-
-
-
-
-
-    def animate_nm_plot(self):
-        if self.hist_idx_nm == 0:
-            self.store_bc()
-            self.call_nm()
-            self.rew_nm = wrapper.env.get_state_value()
-            self.nm_dta = assemble_plot_data(wrapper.env.wds.junctions.head)
-            self.nm_plot= build_plot_from_data(self.nm_dta)
-            self.restore_bc()
-
-        self.nm_dta.data = {
-            'x': wrapper.junc_coords['x'],
-            'y': wrapper.junc_coords['y'],
-            'junc_prop': optimizer.hist_nm[self.hist_idx_nm]
-        }
-        self.hist_idx_nm    += 1
-        if self.hist_idx_nm == len(optimizer.hist_nm):
-            self.hist_idx_nm    = 0
-            curdoc().remove_periodic_callback(self.nm_plot_id)
-            self.playing    = False
-#        return self.nm_plot
-
-    @param.depends('play_button')
-    def play_animation_nm(self):
-#        if self.play_button.label == 'Play':
-        if not self.playing:
-            self.playing = True
-#            self.play_button.label = 'Pause'
-            self.nm_plot_id = curdoc().add_periodic_callback(self.animate_nm_plot, 500)
-        else:
-            #self.play_button.label = 'Play'
-            self.playing = False
-            curdoc().remove_periodic_callback(self.nm_plot_id)
-        return self.nm_plot
-
-
-
-
-
 
     @param.depends('act_opti')
     def read_dqn_rew(self):
@@ -336,54 +288,53 @@ pn.Column(
         pn.WidgetBox(optimizer.read_dqn_evals, width=200),
         pn.WidgetBox(optimizer.read_nm_rew, width=200),
         pn.WidgetBox(optimizer.read_nm_evals, width=200),
-        ),
-    pn.Row(
-        #optimizer.animate_nm_plot
-        #optimizer.play_animation_nm
         )
-).servable()
+    ).servable()
 
-#data = cds(data={
-#    'x': wrapper.junc_coords['x'],
-#    'y': wrapper.junc_coords['y'],
-#    'head': optimizer.hist_nm[0]
-#    }
-#)
-#mapper = linear_cmap(
-#    field_name = 'head',
-#    palette = "Viridis10",
-#    low = 40,
-#    high = 80
-#)
-#fig = figure()
-#edges = fig.line(wrapper.pipe_coords['x'], wrapper.pipe_coords['y'])
-#nodes = fig.circle(x='x', y='y', color=mapper, source=data, size=12)
-#
-
-mlp = 0
-call_id = 0
-def animate_plot():
-    global mlp, data, call_id
+hist_idx_nm = 0
+call_id_nm  = 0
+nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
+nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
+nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
+def animate_nm_plot():
+    global hist_idx_nm, call_id_nm
+    global nm_idx_widget, nm_val_widget
     optimizer.nm_dta.data = {
         'x': wrapper.junc_coords['x'],
         'y': wrapper.junc_coords['y'],
-        'junc_prop': optimizer.hist_nm[mlp]
+        'junc_prop': optimizer.hist_nm[hist_idx_nm]
     }
-    mlp += 1
-    if mlp == len(optimizer.hist_nm):
-        mlp = 0
-        curdoc().remove_periodic_callback(call_id)
-        button.label = 'Play'
+    nm_idx_widget.value = 'Step: ' + str(hist_idx_nm+1)
+    nm_val_widget.value = 'Value: ' + str(optimizer.hist_val_nm[hist_idx_nm])
+    nm_fail_widget.value = 'INvalid heads: ' + str(optimizer.hist_fail_counter_nm[hist_idx_nm])
+    hist_idx_nm += 1
+    if hist_idx_nm == len(optimizer.hist_nm):
+        hist_idx_nm = 0
+        curdoc().remove_periodic_callback(call_id_nm)
+        button_nm.label = 'Play optimization sess'
 
-def play_animation():
-    global call_id
-    if button.label == 'Play':
-        button.label = 'Pause'
-        call_id = curdoc().add_periodic_callback(animate_plot, 500)
+def play_animation_nm():
+    global call_id_nm
+    if button_nm.label == 'Play optimization sess':
+        button_nm.label = 'Pause'
+        call_id_nm      = curdoc().add_periodic_callback(animate_nm_plot, 500)
     else:
-        button.label = 'Play'
-        curdoc().remove_periodic_callback(call_id)
+        button_nm.label = 'Play optimization sess'
+        curdoc().remove_periodic_callback(call_id_nm)
 
-button = Button(label='Play', width=60)
-button.on_click(play_animation)
-pn.Row(button).servable()
+
+button_nm   = Button(label='Play optimization sess', width=400)
+button_nm.on_click(play_animation_nm)
+pn.Row(
+    pn.Column(
+        button_nm,
+        pn.Row(
+            pn.Column(
+                nm_idx_widget,
+                nm_val_widget,
+                nm_fail_widget
+                )
+            )
+        ),
+).servable()
+

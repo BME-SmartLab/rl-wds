@@ -165,23 +165,33 @@ class optimize_speeds(param.Parameterized):
         )
 
     def __init__(self):
-        self.rew_dqn    = 0
         self.rew_nm     = 0
-        self.hist_dqn   = []
         self.hist_nm    = []
         self.hist_val_nm= []
         self_hist_fail_counter_nm   = []
+        self.rew_dqn        = 0
+        self.hist_dqn       = []
+        self.hist_val_dqn   = []
+        self_hist_fail_counter_dqn  = []
 
     def call_dqn(self):
         wrapper.env.wds.solve()
         wrapper.env.steps   = 0
         wrapper.env.done    = False
-        obs             = wrapper.env.get_observation()
-        self.hist_dqn   = [wrapper.env.wds.junctions.head]
+        obs                 = wrapper.env.get_observation()
+        self.hist_dqn       = [wrapper.env.wds.junctions.head]
+        self.hist_val_dqn   = [wrapper.env.get_state_value()]
+        invalid_heads_count = (np.count_nonzero(wrapper.env.wds.junctions.head < wrapper.head_lmt_lo) +
+            np.count_nonzero(wrapper.env.wds.junctions.head > wrapper.head_lmt_hi))
+        self.hist_fail_counter_dqn= [invalid_heads_count]
         while not wrapper.env.done:
             act, _              = wrapper.model.predict(obs, deterministic=True)
             obs, reward, _, _   = wrapper.env.step(act, training=False)
             self.hist_dqn.append(wrapper.env.wds.junctions.head)
+            self.hist_val_dqn.append(wrapper.env.get_state_value())
+            invalid_heads_count = (np.count_nonzero(wrapper.env.wds.junctions.head < wrapper.head_lmt_lo) +
+                np.count_nonzero(wrapper.env.wds.junctions.head > wrapper.head_lmt_hi))
+            self.hist_fail_counter_dqn.append(invalid_heads_count)
 
     def callback_nm(self, fun):
         self.hist_nm.append(wrapper.env.wds.junctions.head)
@@ -224,8 +234,8 @@ class optimize_speeds(param.Parameterized):
         self.store_bc()
         self.call_dqn()
         self.rew_dqn    = wrapper.env.get_state_value()
-        plot_data       = assemble_plot_data(wrapper.env.wds.junctions.head)
-        plot            = build_plot_from_data(plot_data)
+        self.dqn_dta    = assemble_plot_data(wrapper.env.wds.junctions.head)
+        plot            = build_plot_from_data(self.dqn_dta)
         self.restore_bc()
         return plot
 
@@ -241,19 +251,22 @@ class optimize_speeds(param.Parameterized):
 
     @param.depends('act_opti')
     def read_dqn_rew(self):
-        return self.rew_dqn
+        #return self.rew_dqn
+        return self.hist_val_dqn[-1]
 
     @param.depends('act_opti')
     def read_nm_rew(self):
-        return self.rew_nm
+        return self.hist_val_nm[-1]
 
     @param.depends('act_opti')
     def read_dqn_evals(self):
-        return wrapper.env.steps
+        #return wrapper.env.steps
+        return len(self.hist_val_dqn)
 
     @param.depends('act_opti')
     def read_nm_evals(self):
-        return self.nm_evals
+        #return self.nm_evals
+        return len(self.hist_val_nm)
 
 wrapper = environment_wrapper()
 pn.Column(
@@ -296,6 +309,11 @@ call_id_nm  = 0
 nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
 nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
 nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
+hist_idx_dqn= 0
+call_id_dqn = 0
+dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=400)
+dqn_val_widget  = pn.widgets.TextInput(value='Value: ', width=400)
+dqn_fail_widget = pn.widgets.TextInput(value='Invalid heads: ', width=400)
 def animate_nm_plot():
     global hist_idx_nm, call_id_nm
     global nm_idx_widget, nm_val_widget
@@ -306,7 +324,7 @@ def animate_nm_plot():
     }
     nm_idx_widget.value = 'Step: ' + str(hist_idx_nm+1)
     nm_val_widget.value = 'Value: ' + str(optimizer.hist_val_nm[hist_idx_nm])
-    nm_fail_widget.value = 'INvalid heads: ' + str(optimizer.hist_fail_counter_nm[hist_idx_nm])
+    nm_fail_widget.value = 'Invalid heads: ' + str(optimizer.hist_fail_counter_nm[hist_idx_nm])
     hist_idx_nm += 1
     if hist_idx_nm == len(optimizer.hist_nm):
         hist_idx_nm = 0
@@ -322,10 +340,47 @@ def play_animation_nm():
         button_nm.label = 'Play optimization sess'
         curdoc().remove_periodic_callback(call_id_nm)
 
+def animate_dqn_plot():
+    global hist_idx_dqn, call_id_dqn
+    global dqn_idx_widget, dqn_val_widget
+    optimizer.dqn_dta.data = {
+        'x': wrapper.junc_coords['x'],
+        'y': wrapper.junc_coords['y'],
+        'junc_prop': optimizer.hist_dqn[hist_idx_dqn]
+    }
+    dqn_idx_widget.value = 'Step: ' + str(hist_idx_dqn+1)
+    dqn_val_widget.value = 'Value: ' + str(optimizer.hist_val_dqn[hist_idx_dqn])
+    dqn_fail_widget.value = 'Invalid heads: ' + str(optimizer.hist_fail_counter_dqn[hist_idx_dqn])
+    hist_idx_dqn    += 1
+    if hist_idx_dqn == len(optimizer.hist_dqn):
+        curdoc().remove_periodic_callback(call_id_dqn)
+        hist_idx_dqn        = 0
+        button_dqn.label    = 'Play optimization sess'
+
+def play_animation_dqn():
+    global call_id_dqn
+    if button_dqn.label == 'Play optimization sess':
+        button_dqn.label= 'Pause'
+        call_id_dqn     = curdoc().add_periodic_callback(animate_dqn_plot, 500)
+    else:
+        button_dqn.label= 'Play optimization sess'
+        curdoc().remove_periodic_callback(call_id_dqn)
 
 button_nm   = Button(label='Play optimization sess', width=400)
 button_nm.on_click(play_animation_nm)
+button_dqn  = Button(label='Play optimization sess', width=400)
+button_dqn.on_click(play_animation_dqn)
 pn.Row(
+    pn.Column(
+        button_dqn,
+        pn.Row(
+            pn.Column(
+                dqn_idx_widget,
+                dqn_val_widget,
+                dqn_fail_widget
+                )
+            )
+        ),
     pn.Column(
         button_nm,
         pn.Row(
@@ -335,6 +390,5 @@ pn.Row(
                 nm_fail_widget
                 )
             )
-        ),
+        )
 ).servable()
-

@@ -76,7 +76,7 @@ class environment_wrapper(param.Parameterized):
     def __init__(self):
         self.loaded_wds = ''
         self.head_lmt_lo= 15
-        self.head_lmt_hi= 120
+        self.head_lmt_hi= 160
 
     def _assemble_junc_coordinates(self, wds):
         junc_x = []
@@ -167,11 +167,11 @@ class optimize_speeds(param.Parameterized):
     def __init__(self):
         self.rew_nm     = 0
         self.hist_nm    = []
-        self.hist_val_nm= []
+        self.hist_val_nm= [0]
         self_hist_fail_counter_nm   = []
         self.rew_dqn        = 0
         self.hist_dqn       = []
-        self.hist_val_dqn   = []
+        self.hist_val_dqn   = [0]
         self_hist_fail_counter_dqn  = []
 
     def call_dqn(self):
@@ -293,20 +293,28 @@ pn.Column(
     '# Optimizing pump speeds',
     pn.panel(optimizer.param, show_labels=False, show_name=False, margin=0),
     pn.Row(
-        optimizer.plot_dqn,
-        optimizer.plot_nm,
-        ),
-    pn.Row(
-        pn.WidgetBox(optimizer.read_dqn_rew, width=200),
-        pn.WidgetBox(optimizer.read_dqn_evals, width=200),
-        pn.WidgetBox(optimizer.read_nm_rew, width=200),
-        pn.WidgetBox(optimizer.read_nm_evals, width=200),
+        pn.Column(
+            '# Deep Q-Network',
+            optimizer.plot_dqn,
+            pn.Row(
+                pn.WidgetBox(optimizer.read_dqn_rew, width=200),
+                pn.WidgetBox(optimizer.read_dqn_evals, width=200)
+                )
+            ),
+        pn.Column(
+            '# Nelder-Mead method',
+            optimizer.plot_nm,
+            pn.Row(
+                pn.WidgetBox(optimizer.read_nm_rew, width=200),
+                pn.WidgetBox(optimizer.read_nm_evals, width=200)
+                )
+            )
         )
     ).servable()
 
 hist_idx_nm = 0
 call_id_nm  = 0
-nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
+nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400, background='#f307eb')
 nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
 nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
 hist_idx_dqn= 0
@@ -323,7 +331,7 @@ def animate_nm_plot():
         'junc_prop': optimizer.hist_nm[hist_idx_nm]
     }
     nm_idx_widget.value = 'Step: ' + str(hist_idx_nm+1)
-    nm_val_widget.value = 'Value: ' + str(optimizer.hist_val_nm[hist_idx_nm])
+    nm_val_widget.value = 'Value: {:.3f}'.format(optimizer.hist_val_nm[hist_idx_nm])
     nm_fail_widget.value = 'Invalid heads: ' + str(optimizer.hist_fail_counter_nm[hist_idx_nm])
     hist_idx_nm += 1
     if hist_idx_nm == len(optimizer.hist_nm):
@@ -349,7 +357,7 @@ def animate_dqn_plot():
         'junc_prop': optimizer.hist_dqn[hist_idx_dqn]
     }
     dqn_idx_widget.value = 'Step: ' + str(hist_idx_dqn+1)
-    dqn_val_widget.value = 'Value: ' + str(optimizer.hist_val_dqn[hist_idx_dqn])
+    dqn_val_widget.value = 'Value: {:.3f}'.format(optimizer.hist_val_dqn[hist_idx_dqn])
     dqn_fail_widget.value = 'Invalid heads: ' + str(optimizer.hist_fail_counter_dqn[hist_idx_dqn])
     hist_idx_dqn    += 1
     if hist_idx_dqn == len(optimizer.hist_dqn):
@@ -391,4 +399,4 @@ pn.Row(
                 )
             )
         )
-).servable()
+    ).servable()

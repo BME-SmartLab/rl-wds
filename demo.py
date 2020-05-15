@@ -31,7 +31,7 @@ def assemble_plot_data(junc_prop):
         )
     return plot_data
 
-def build_plot_from_data(data, min_prop=None, max_prop=None):
+def build_plot_from_data(data, min_prop=None, max_prop=None, title=None, figtitle=None):
     if not min_prop:
         min_prop = min(data.data['junc_prop'])
     if not max_prop:
@@ -49,12 +49,22 @@ def build_plot_from_data(data, min_prop=None, max_prop=None):
         high    = max_prop
         )
 
-    fig         = figure()
+    fig         = figure(title=figtitle)
     edges       = fig.line(wrapper.pipe_coords['x'], wrapper.pipe_coords['y'])
     nodes       = fig.circle(x='x', y='y', color=mapper, source=data, size=12)
-    color_bar   = ColorBar(color_mapper=cmapper)
+    color_bar   = ColorBar(color_mapper=cmapper, title=title)
     fig.add_layout(color_bar, 'right')
-    fig = pn.pane.Bokeh(fig, width=400, height=300)
+
+    fig.toolbar.logo        = None
+    fig.toolbar_location    = None
+    fig.xaxis.major_tick_line_color = None
+    fig.xaxis.minor_tick_line_color = None
+    fig.yaxis.major_tick_line_color = None
+    fig.yaxis.minor_tick_line_color = None
+    fig.xaxis.major_label_text_font_size = '0pt'
+    fig.yaxis.major_label_text_font_size = '0pt'
+
+    fig = pn.pane.Bokeh(fig, width=600, height=500)
     return fig
 
 class environment_wrapper(param.Parameterized):
@@ -76,7 +86,7 @@ class environment_wrapper(param.Parameterized):
     def __init__(self):
         self.loaded_wds = ''
         self.head_lmt_lo= 15
-        self.head_lmt_hi= 160
+        self.head_lmt_hi= 150
 
     def _assemble_junc_coordinates(self, wds):
         junc_x = []
@@ -112,13 +122,13 @@ class environment_wrapper(param.Parameterized):
             if wds_name == 'Anytown':
                 hyperparams_fn  = 'anytownMaster'
                 model_fn        = 'anytownHO1-best'
-                self.dmd_lo     = 0
-                self.dmd_hi     = 250
+                self.dmd_lo     = 30
+                self.dmd_hi     = 80
             elif wds_name == 'D-Town':
                 hyperparams_fn  = 'dtownMaster'
                 model_fn        = 'dtownHO1-best'
-                self.dmd_lo     = 0
-                self.dmd_hi     = 10
+                self.dmd_lo     = 50
+                self.dmd_hi     = 150
 
             pathToParams = os.path.join(
                 'experiments',
@@ -155,7 +165,7 @@ class environment_wrapper(param.Parameterized):
         self.env.reset(training=True)
 
         plot_data   = assemble_plot_data(wrapper.env.wds.junctions.head)
-        self.plot   = build_plot_from_data(plot_data, self.dmd_lo, self.dmd_hi)
+        self.plot   = build_plot_from_data(plot_data, self.dmd_lo, self.dmd_hi, 'm^3/h', figtitle='Nodal demand')
         return self.plot
 
 class optimize_speeds(param.Parameterized):
@@ -235,7 +245,7 @@ class optimize_speeds(param.Parameterized):
         self.call_dqn()
         self.rew_dqn    = wrapper.env.get_state_value()
         self.dqn_dta    = assemble_plot_data(wrapper.env.wds.junctions.head)
-        plot            = build_plot_from_data(self.dqn_dta)
+        plot            = build_plot_from_data(self.dqn_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
         self.restore_bc()
         return plot
 
@@ -245,7 +255,7 @@ class optimize_speeds(param.Parameterized):
         self.call_nm()
         self.rew_nm = wrapper.env.get_state_value()
         self.nm_dta = assemble_plot_data(wrapper.env.wds.junctions.head)
-        plot        = build_plot_from_data(self.nm_dta)
+        plot        = build_plot_from_data(self.nm_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
         self.restore_bc()
         return plot
 
@@ -295,7 +305,9 @@ pn.Column(
     pn.Row(
         pn.Column(
             '# Deep Q-Network',
-            optimizer.plot_dqn,
+            pn.Row(
+                optimizer.plot_dqn
+                ),
             pn.Row(
                 pn.WidgetBox(optimizer.read_dqn_rew, width=200),
                 pn.WidgetBox(optimizer.read_dqn_evals, width=200)
@@ -303,7 +315,9 @@ pn.Column(
             ),
         pn.Column(
             '# Nelder-Mead method',
-            optimizer.plot_nm,
+            pn.Row(
+                optimizer.plot_nm
+                ),
             pn.Row(
                 pn.WidgetBox(optimizer.read_nm_rew, width=200),
                 pn.WidgetBox(optimizer.read_nm_evals, width=200)
@@ -314,7 +328,7 @@ pn.Column(
 
 hist_idx_nm = 0
 call_id_nm  = 0
-nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400, background='#f307eb')
+nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
 nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
 nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
 hist_idx_dqn= 0
@@ -337,15 +351,15 @@ def animate_nm_plot():
     if hist_idx_nm == len(optimizer.hist_nm):
         hist_idx_nm = 0
         curdoc().remove_periodic_callback(call_id_nm)
-        button_nm.label = 'Play optimization sess'
+        button_nm.label = 'Replay optimization sess'
 
 def play_animation_nm():
     global call_id_nm
-    if button_nm.label == 'Play optimization sess':
+    if button_nm.label == 'Replay optimization sess':
         button_nm.label = 'Pause'
         call_id_nm      = curdoc().add_periodic_callback(animate_nm_plot, 500)
     else:
-        button_nm.label = 'Play optimization sess'
+        button_nm.label = 'Replay optimization sess'
         curdoc().remove_periodic_callback(call_id_nm)
 
 def animate_dqn_plot():
@@ -363,20 +377,20 @@ def animate_dqn_plot():
     if hist_idx_dqn == len(optimizer.hist_dqn):
         curdoc().remove_periodic_callback(call_id_dqn)
         hist_idx_dqn        = 0
-        button_dqn.label    = 'Play optimization sess'
+        button_dqn.label    = 'Replay optimization sess'
 
 def play_animation_dqn():
     global call_id_dqn
-    if button_dqn.label == 'Play optimization sess':
+    if button_dqn.label == 'Replay optimization sess':
         button_dqn.label= 'Pause'
         call_id_dqn     = curdoc().add_periodic_callback(animate_dqn_plot, 500)
     else:
-        button_dqn.label= 'Play optimization sess'
+        button_dqn.label= 'Replay optimization sess'
         curdoc().remove_periodic_callback(call_id_dqn)
 
-button_nm   = Button(label='Play optimization sess', width=400)
+button_nm   = Button(label='Replay optimization sess', width=600)
 button_nm.on_click(play_animation_nm)
-button_dqn  = Button(label='Play optimization sess', width=400)
+button_dqn  = Button(label='Replay optimization sess', width=600)
 button_dqn.on_click(play_animation_dqn)
 pn.Row(
     pn.Column(

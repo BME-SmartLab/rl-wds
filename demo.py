@@ -293,15 +293,15 @@ def animate_nm_plot():
     if hist_idx_nm == len(optimizer.hist_nm):
         hist_idx_nm = 0
         curdoc().remove_periodic_callback(call_id_nm)
-        button_nm.label = 'Replay optimization sess'
+        button_nm.label = 'Replay optimization'
 
 def play_animation_nm():
     global call_id_nm
-    if button_nm.label == 'Replay optimization sess':
+    if button_nm.label == 'Replay optimization':
         button_nm.label = 'Pause'
         call_id_nm      = curdoc().add_periodic_callback(animate_nm_plot, 500)
     else:
-        button_nm.label = 'Replay optimization sess'
+        button_nm.label = 'Replay optimization'
         curdoc().remove_periodic_callback(call_id_nm)
 
 def animate_dqn_plot():
@@ -319,15 +319,15 @@ def animate_dqn_plot():
     if hist_idx_dqn == len(optimizer.hist_dqn):
         curdoc().remove_periodic_callback(call_id_dqn)
         hist_idx_dqn        = 0
-        button_dqn.label    = 'Replay optimization sess'
+        button_dqn.label    = 'Replay optimization'
 
 def play_animation_dqn():
     global call_id_dqn
-    if button_dqn.label == 'Replay optimization sess':
+    if button_dqn.label == 'Replay optimization':
         button_dqn.label= 'Pause'
         call_id_dqn     = curdoc().add_periodic_callback(animate_dqn_plot, 500)
     else:
-        button_dqn.label= 'Replay optimization sess'
+        button_dqn.label= 'Replay optimization'
         curdoc().remove_periodic_callback(call_id_dqn)
 
 wrapper     = environment_wrapper()
@@ -344,6 +344,75 @@ dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=400)
 dqn_val_widget  = pn.widgets.TextInput(value='Value: ', width=400)
 dqn_fail_widget = pn.widgets.TextInput(value='Invalid heads: ', width=400)
 
+demo_introduction   = pn.pane.Markdown("""
+    ### Introduction
+    This is a showcase of agents controlling pumps in water distribution systems (WDSs).
+    Two benchmark WDSs
+    ([Anytown](http://emps.exeter.ac.uk/engineering/research/cws/resources/benchmarks/expansion/anytown.php)
+    and
+    [D-Town](http://emps.exeter.ac.uk/engineering/research/cws/resources/benchmarks/expansion/d-town.php))
+    are available for the demo with agents trained by the deep Q-network (DQN) algorithm.
+    Nelder-Mead method serves as a baseline optimization algorithm that can find optimum pump speeds in a confined number of iteration steps.
+
+    Benefits of the DQN-agent over the conventional optimization algorithm are that DQN-agent
+
+    - makes its steps monotonously towards the optimum,
+    - avoids speed settings where pressure is dangerously high,
+    - relies only on nodal pressure data (no computer simulation needed).
+
+    These properties make the DQN-agent a good candidate to use as a continuous pump speed controller in WDSs.
+    Presently, the drawback is that this type of agent handles discrete pump speeds, hence the achieved optimum is slightly smaller compared to a conventional optimization algorithm.
+    """,
+    width   = 600
+    )
+demo_usage  = pn.pane.Markdown("""
+    ### Usage
+    The nodal demand (in cubic meters per hour) and the nodal pressure as head (in meters) is visualized on the topology of the selected water distribution system.
+    Pumps and tanks are not shown in the figures.
+    To play an optimization session, do the following.
+
+    1. Select a water distribution system.
+    2. Select whether the demands and the pump speeds should be set according to the original values or randomly.
+    3. Press the **Load water distribution system** button to load the WDS and the DQN-agent. It can take a few seconds.
+    4. The nodal demands are depicted in the upper right figure.
+    5. Press the **Optimize pump speeds** button. The pump speeds are set by the DQN-agent and the Nelder-Mead method.
+    6. The nodal heads are depicted in the figures in the bottom while the state value and the number of steps needed to reach the optimum is shown beneath the figures.
+    7. Each step of the optimization process can be replayed by pressing the **Replay optimization** button. The followings are printed for the current step:
+        - the number of the step,
+        - the state value,
+        - the number of nodes in danger due to high pressure.
+
+    During optimization replay, the nodal heads corresponding to the actual step are colored in the figures.
+    """,
+    width   = 600
+    )
+demo_repo   = pn.pane.Markdown("""
+    ### Code repository
+    [https://github.com/BME-SmartLab/rl-wds](https://github.com/BME-SmartLab/rl-wds)
+    """,
+    width   = 600
+    )
+demo_paper  = pn.pane.Markdown("""
+    ### Paper
+    Under revision in the Journal of Water Resources Planning and Management.
+    """,
+    width   = 600
+    )
+demo_acknowledgment = pn.pane.Markdown("""
+    ### Acknowledgment
+    The research presented in this paper has been supported by the BME-Artificial Intelligence FIKP grant of Ministry of Human Resources (BME FIKP-MI/SC).
+    Bálint Gyires Tóth is grateful for the financial support of the Doctoral Research Scholarship of Ministry of Human Resources (ÚNKP-19-4-BME-189) in the scope of New National Excellence Program and of János Bolyai Research Scholarship of the Hungarian Academy of Sciences.
+    """,
+    width   = 1200
+    )
+
+pn.Column(
+    "# Optimal pump operation with reinforcement learning",
+    pn.Row(
+        demo_introduction,
+        demo_usage
+        )
+    ).servable()
 pn.Column(
     '# Loading the water distribution system',
     pn.Row(
@@ -361,7 +430,7 @@ pn.Column(
             ),
         wrapper.load_wds
         )
-).servable()
+    ).servable()
 
 pn.Column(
     '# Optimizing pump speeds',
@@ -390,9 +459,9 @@ pn.Column(
         )
     ).servable()
 
-button_nm   = Button(label='Replay optimization sess', width=600)
+button_nm   = Button(label='Replay optimization', width=600)
 button_nm.on_click(play_animation_nm)
-button_dqn  = Button(label='Replay optimization sess', width=600)
+button_dqn  = Button(label='Replay optimization', width=600)
 button_dqn.on_click(play_animation_dqn)
 pn.Row(
     pn.Column(
@@ -416,4 +485,10 @@ pn.Row(
             )
         )
     ).servable()
-pn.Column('#Acknowledgment\nThe research presented in this paper has been supported by the BME-Artificial Intelligence FIKP grant of Ministry of Human Resources (BME FIKP-MI/SC). Bálint Gyires Tóth is grateful for the financial support of the Doctoral Research Scholarship of Ministry of Human Resources (ÚNKP-19-4-BME-189) in the scope of New National Excellence Program and of János Bolyai Research Scholarship of the Hungarian Academy of Sciences.').servable()
+pn.Column(
+    pn.Row(
+        demo_repo,
+        demo_paper
+        ),
+    demo_acknowledgment
+).servable()

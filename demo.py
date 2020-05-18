@@ -288,7 +288,7 @@ def animate_nm_plot():
     }
     nm_idx_widget.value = 'Step: ' + str(hist_idx_nm+1)
     nm_val_widget.value = 'Value: {:.3f}'.format(optimizer.hist_val_nm[hist_idx_nm])
-    nm_fail_widget.value = 'Invalid heads: ' + str(optimizer.hist_fail_counter_nm[hist_idx_nm])
+    nm_fail_widget.value= 'High-pressure nodes: ' + str(optimizer.hist_fail_counter_nm[hist_idx_nm])
     hist_idx_nm += 1
     if hist_idx_nm == len(optimizer.hist_nm):
         hist_idx_nm = 0
@@ -314,7 +314,7 @@ def animate_dqn_plot():
     }
     dqn_idx_widget.value = 'Step: ' + str(hist_idx_dqn+1)
     dqn_val_widget.value = 'Value: {:.3f}'.format(optimizer.hist_val_dqn[hist_idx_dqn])
-    dqn_fail_widget.value = 'Invalid heads: ' + str(optimizer.hist_fail_counter_dqn[hist_idx_dqn])
+    dqn_fail_widget.value = 'High-pressure nodes: ' + str(optimizer.hist_fail_counter_dqn[hist_idx_dqn])
     hist_idx_dqn    += 1
     if hist_idx_dqn == len(optimizer.hist_dqn):
         curdoc().remove_periodic_callback(call_id_dqn)
@@ -329,20 +329,6 @@ def play_animation_dqn():
     else:
         button_dqn.label= 'Replay optimization'
         curdoc().remove_periodic_callback(call_id_dqn)
-
-wrapper     = environment_wrapper()
-optimizer   = optimize_speeds()
-
-hist_idx_nm = 0
-call_id_nm  = 0
-nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
-nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
-nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
-hist_idx_dqn= 0
-call_id_dqn = 0
-dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=400)
-dqn_val_widget  = pn.widgets.TextInput(value='Value: ', width=400)
-dqn_fail_widget = pn.widgets.TextInput(value='Invalid heads: ', width=400)
 
 demo_introduction   = pn.pane.Markdown("""
     ### Introduction
@@ -406,15 +392,31 @@ demo_acknowledgment = pn.pane.Markdown("""
     width   = 1200
     )
 
+wrapper     = environment_wrapper()
+optimizer   = optimize_speeds()
+
+hist_idx_nm = 0
+call_id_nm  = 0
+hist_idx_dqn= 0
+call_id_dqn = 0
+nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
+nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
+nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
+dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=400)
+dqn_val_widget  = pn.widgets.TextInput(value='Value: ', width=400)
+dqn_fail_widget = pn.widgets.TextInput(value='Invalid heads: ', width=400)
+button_nm   = Button(label='Replay optimization', width=600)
+button_nm.on_click(play_animation_nm)
+button_dqn  = Button(label='Replay optimization', width=600)
+button_dqn.on_click(play_animation_dqn)
+
 pn.Column(
     "# Optimal pump operation with reinforcement learning",
     pn.Row(
         demo_introduction,
         demo_usage
-        )
-    ).servable()
-pn.Column(
-    '# Loading the water distribution system',
+        ),
+    '## Loading the water distribution system',
     pn.Row(
         pn.Column(
             pn.panel(
@@ -429,15 +431,12 @@ pn.Column(
                 ),
             ),
         wrapper.load_wds
-        )
-    ).servable()
-
-pn.Column(
-    '# Optimizing pump speeds',
+        ),
+    '## Optimizing pump speeds',
     pn.panel(optimizer.param, show_labels=False, show_name=False, margin=0),
     pn.Row(
         pn.Column(
-            '# Deep Q-Network',
+            '### Deep Q-Network',
             pn.Row(
                 optimizer.plot_dqn
                 ),
@@ -447,7 +446,7 @@ pn.Column(
                 )
             ),
         pn.Column(
-            '# Nelder-Mead method',
+            '### Nelder-Mead method',
             pn.Row(
                 optimizer.plot_nm
                 ),
@@ -456,39 +455,32 @@ pn.Column(
                 pn.WidgetBox(optimizer.read_nm_evals, width=200)
                 )
             )
-        )
-    ).servable()
-
-button_nm   = Button(label='Replay optimization', width=600)
-button_nm.on_click(play_animation_nm)
-button_dqn  = Button(label='Replay optimization', width=600)
-button_dqn.on_click(play_animation_dqn)
-pn.Row(
-    pn.Column(
-        button_dqn,
-        pn.Row(
-            pn.Column(
-                dqn_idx_widget,
-                dqn_val_widget,
-                dqn_fail_widget
-                )
-            )
         ),
-    pn.Column(
-        button_nm,
-        pn.Row(
-            pn.Column(
-                nm_idx_widget,
-                nm_val_widget,
-                nm_fail_widget
-                )
-            )
-        )
-    ).servable()
-pn.Column(
     pn.Row(
-        demo_repo,
-        demo_paper
+        pn.Column(
+            button_dqn,
+            pn.Row(
+                pn.Column(
+                    dqn_idx_widget,
+                    dqn_val_widget,
+                    dqn_fail_widget
+                    )
+                )
+            ),
+        pn.Column(
+            button_nm,
+            pn.Row(
+                pn.Column(
+                    nm_idx_widget,
+                    nm_val_widget,
+                    nm_fail_widget
+                    )
+                )
+            )
         ),
-    demo_acknowledgment
-).servable()
+        pn.Row(
+            demo_repo,
+            demo_paper
+            ),
+        demo_acknowledgment
+    ).servable()

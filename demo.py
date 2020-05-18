@@ -278,64 +278,6 @@ class optimize_speeds(param.Parameterized):
         #return self.nm_evals
         return len(self.hist_val_nm)
 
-wrapper = environment_wrapper()
-pn.Column(
-    '# Loading the water distribution system',
-    pn.Row(
-        pn.Column(
-            pn.panel(
-                wrapper.param,
-                show_labels = False,
-                show_name   = False,
-                margin      = 0,
-                widgets = {
-                    'sel_dmd': pn.widgets.RadioButtonGroup,
-                    'sel_spd': pn.widgets.RadioButtonGroup
-                    }
-                ),
-            ),
-        wrapper.load_wds
-        )
-).servable()
-
-optimizer = optimize_speeds()
-pn.Column(
-    '# Optimizing pump speeds',
-    pn.panel(optimizer.param, show_labels=False, show_name=False, margin=0),
-    pn.Row(
-        pn.Column(
-            '# Deep Q-Network',
-            pn.Row(
-                optimizer.plot_dqn
-                ),
-            pn.Row(
-                pn.WidgetBox(optimizer.read_dqn_rew, width=200),
-                pn.WidgetBox(optimizer.read_dqn_evals, width=200)
-                )
-            ),
-        pn.Column(
-            '# Nelder-Mead method',
-            pn.Row(
-                optimizer.plot_nm
-                ),
-            pn.Row(
-                pn.WidgetBox(optimizer.read_nm_rew, width=200),
-                pn.WidgetBox(optimizer.read_nm_evals, width=200)
-                )
-            )
-        )
-    ).servable()
-
-hist_idx_nm = 0
-call_id_nm  = 0
-nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
-nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
-nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
-hist_idx_dqn= 0
-call_id_dqn = 0
-dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=400)
-dqn_val_widget  = pn.widgets.TextInput(value='Value: ', width=400)
-dqn_fail_widget = pn.widgets.TextInput(value='Invalid heads: ', width=400)
 def animate_nm_plot():
     global hist_idx_nm, call_id_nm
     global nm_idx_widget, nm_val_widget
@@ -388,6 +330,66 @@ def play_animation_dqn():
         button_dqn.label= 'Replay optimization sess'
         curdoc().remove_periodic_callback(call_id_dqn)
 
+wrapper     = environment_wrapper()
+optimizer   = optimize_speeds()
+
+hist_idx_nm = 0
+call_id_nm  = 0
+nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
+nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
+nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
+hist_idx_dqn= 0
+call_id_dqn = 0
+dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=400)
+dqn_val_widget  = pn.widgets.TextInput(value='Value: ', width=400)
+dqn_fail_widget = pn.widgets.TextInput(value='Invalid heads: ', width=400)
+
+pn.Column(
+    '# Loading the water distribution system',
+    pn.Row(
+        pn.Column(
+            pn.panel(
+                wrapper.param,
+                show_labels = False,
+                show_name   = False,
+                margin      = 0,
+                widgets = {
+                    'sel_dmd': pn.widgets.RadioButtonGroup,
+                    'sel_spd': pn.widgets.RadioButtonGroup
+                    }
+                ),
+            ),
+        wrapper.load_wds
+        )
+).servable()
+
+pn.Column(
+    '# Optimizing pump speeds',
+    pn.panel(optimizer.param, show_labels=False, show_name=False, margin=0),
+    pn.Row(
+        pn.Column(
+            '# Deep Q-Network',
+            pn.Row(
+                optimizer.plot_dqn
+                ),
+            pn.Row(
+                pn.WidgetBox(optimizer.read_dqn_rew, width=200),
+                pn.WidgetBox(optimizer.read_dqn_evals, width=200)
+                )
+            ),
+        pn.Column(
+            '# Nelder-Mead method',
+            pn.Row(
+                optimizer.plot_nm
+                ),
+            pn.Row(
+                pn.WidgetBox(optimizer.read_nm_rew, width=200),
+                pn.WidgetBox(optimizer.read_nm_evals, width=200)
+                )
+            )
+        )
+    ).servable()
+
 button_nm   = Button(label='Replay optimization sess', width=600)
 button_nm.on_click(play_animation_nm)
 button_dqn  = Button(label='Replay optimization sess', width=600)
@@ -414,3 +416,4 @@ pn.Row(
             )
         )
     ).servable()
+pn.Column('#Acknowledgment\nThe research presented in this paper has been supported by the BME-Artificial Intelligence FIKP grant of Ministry of Human Resources (BME FIKP-MI/SC). Bálint Gyires Tóth is grateful for the financial support of the Doctoral Research Scholarship of Ministry of Human Resources (ÚNKP-19-4-BME-189) in the scope of New National Excellence Program and of János Bolyai Research Scholarship of the Hungarian Academy of Sciences.').servable()

@@ -202,6 +202,9 @@ class optimize_speeds(param.Parameterized):
             invalid_heads_count = (np.count_nonzero(wrapper.env.wds.junctions.head < wrapper.head_lmt_lo) +
                 np.count_nonzero(wrapper.env.wds.junctions.head > wrapper.head_lmt_hi))
             self.hist_fail_counter_dqn.append(invalid_heads_count)
+        self.hist_dqn       = self.hist_dqn[:-3]
+        self.hist_val_dqn   = self.hist_val_dqn[:-3]
+        self.hist_fail_counter_dqn  = self.hist_fail_counter_dqn[:-3]
 
     def callback_nm(self, fun):
         self.hist_nm.append(wrapper.env.wds.junctions.head)
@@ -245,7 +248,10 @@ class optimize_speeds(param.Parameterized):
         self.call_dqn()
         self.rew_dqn    = wrapper.env.get_state_value()
         self.dqn_dta    = assemble_plot_data(wrapper.env.wds.junctions.head)
-        plot            = build_plot_from_data(self.dqn_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
+        if wrapper.loaded_wds == 'Anytown':
+            plot    = build_plot_from_data(self.dqn_dta, 30, 90, title='m', figtitle='Nodal head')
+        else:
+            plot    = build_plot_from_data(self.dqn_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
         self.restore_bc()
         return plot
 
@@ -255,40 +261,48 @@ class optimize_speeds(param.Parameterized):
         self.call_nm()
         self.rew_nm = wrapper.env.get_state_value()
         self.nm_dta = assemble_plot_data(wrapper.env.wds.junctions.head)
-        plot        = build_plot_from_data(self.nm_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
+        if wrapper.loaded_wds == 'Anytown':
+            plot    = build_plot_from_data(self.nm_dta, 30, 90, title='m', figtitle='Nodal head')
+        else:
+            plot    = build_plot_from_data(self.nm_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
         self.restore_bc()
         return plot
 
     @param.depends('act_opti')
     def read_dqn_rew(self):
         #return self.rew_dqn
-        return self.hist_val_dqn[-1]
+        return 'Final state value: {:.3f}'.format(self.hist_val_dqn[-1])
 
     @param.depends('act_opti')
     def read_nm_rew(self):
-        return self.hist_val_nm[-1]
+        return 'Final state value: {:.3f}'.format(self.hist_val_nm[-1])
 
     @param.depends('act_opti')
     def read_dqn_evals(self):
         #return wrapper.env.steps
-        return len(self.hist_val_dqn)
+        return 'Total steps: {}'.format(len(self.hist_val_dqn))
 
     @param.depends('act_opti')
     def read_nm_evals(self):
         #return self.nm_evals
-        return len(self.hist_val_nm)
+        return 'Total steps: {}'.format(len(self.hist_val_nm))
 
 def animate_nm_plot():
     global hist_idx_nm, call_id_nm
     global nm_idx_widget, nm_val_widget
+    global nm_widget
     optimizer.nm_dta.data = {
         'x': wrapper.junc_coords['x'],
         'y': wrapper.junc_coords['y'],
         'junc_prop': optimizer.hist_nm[hist_idx_nm]
     }
     nm_idx_widget.value = 'Step: ' + str(hist_idx_nm+1)
-    nm_val_widget.value = 'Value: {:.3f}'.format(optimizer.hist_val_nm[hist_idx_nm])
+    nm_val_widget.value = 'State value: {:.3f}'.format(optimizer.hist_val_nm[hist_idx_nm])
     nm_fail_widget.value= 'High-pressure nodes: ' + str(optimizer.hist_fail_counter_nm[hist_idx_nm])
+    if optimizer.hist_fail_counter_nm[hist_idx_nm]:
+        nm_widget.background    = '#FF0000'
+    else:
+        nm_widget.background    = '#FFFFFF'
     hist_idx_nm += 1
     if hist_idx_nm == len(optimizer.hist_nm):
         hist_idx_nm = 0
@@ -307,14 +321,19 @@ def play_animation_nm():
 def animate_dqn_plot():
     global hist_idx_dqn, call_id_dqn
     global dqn_idx_widget, dqn_val_widget
+    global dqn_widget
     optimizer.dqn_dta.data = {
         'x': wrapper.junc_coords['x'],
         'y': wrapper.junc_coords['y'],
         'junc_prop': optimizer.hist_dqn[hist_idx_dqn]
     }
     dqn_idx_widget.value = 'Step: ' + str(hist_idx_dqn+1)
-    dqn_val_widget.value = 'Value: {:.3f}'.format(optimizer.hist_val_dqn[hist_idx_dqn])
+    dqn_val_widget.value = 'State value: {:.3f}'.format(optimizer.hist_val_dqn[hist_idx_dqn])
     dqn_fail_widget.value = 'High-pressure nodes: ' + str(optimizer.hist_fail_counter_dqn[hist_idx_dqn])
+    if optimizer.hist_fail_counter_dqn[hist_idx_dqn]:
+        dqn_widget.background    = '#FF0000'
+    else:
+        dqn_widget.background    = '#FFFFFF'
     hist_idx_dqn    += 1
     if hist_idx_dqn == len(optimizer.hist_dqn):
         curdoc().remove_periodic_callback(call_id_dqn)
@@ -338,7 +357,10 @@ demo_introduction   = pn.pane.Markdown("""
     and
     [D-Town](http://emps.exeter.ac.uk/engineering/research/cws/resources/benchmarks/expansion/d-town.php))
     are available for the demo with agents trained by the deep Q-network (DQN) algorithm.
-    Nelder-Mead method serves as a baseline optimization algorithm that can find optimum pump speeds in a confined number of iteration steps.
+    Nelder-Mead method serves as a baseline optimization technique that can find optimum pump speeds in a confined number of iteration steps.
+
+    The quality of a setting is measured by the state value that is a weighted sum of multiple objective values.
+    Both algorithms are competing to find the optimum speed setting (where the state value is at its peak) for the pumps under given nodal demands and initial speed settings.
 
     Benefits of the DQN-agent over the conventional optimization algorithm are that DQN-agent
 
@@ -369,6 +391,7 @@ demo_usage  = pn.pane.Markdown("""
         - the number of nodes in danger due to high pressure.
 
     During optimization replay, the nodal heads corresponding to the actual step are colored in the figures.
+    In the Anytown case there is nearly no variation in the nodal pressures during replay as the single pump station has little effect on the heads compared to the tank.
     """,
     width   = 600
     )
@@ -387,7 +410,6 @@ demo_paper  = pn.pane.Markdown("""
 demo_acknowledgment = pn.pane.Markdown("""
     ### Acknowledgment
     The research presented in this paper has been supported by the BME-Artificial Intelligence FIKP grant of Ministry of Human Resources (BME FIKP-MI/SC).
-    Bálint Gyires Tóth is grateful for the financial support of the Doctoral Research Scholarship of Ministry of Human Resources (ÚNKP-19-4-BME-189) in the scope of New National Excellence Program and of János Bolyai Research Scholarship of the Hungarian Academy of Sciences.
     """,
     width   = 1200
     )
@@ -399,17 +421,31 @@ hist_idx_nm = 0
 call_id_nm  = 0
 hist_idx_dqn= 0
 call_id_dqn = 0
-nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=400)
-nm_val_widget   = pn.widgets.TextInput(value='Value: ', width=400)
-nm_fail_widget  = pn.widgets.TextInput(value='Invalid heads: ', width=400)
-dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=400)
-dqn_val_widget  = pn.widgets.TextInput(value='Value: ', width=400)
-dqn_fail_widget = pn.widgets.TextInput(value='Invalid heads: ', width=400)
+nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=300)
+nm_val_widget   = pn.widgets.TextInput(value='State value: ', width=300)
+nm_fail_widget  = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
+dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=300)
+dqn_val_widget  = pn.widgets.TextInput(value='State value: ', width=300)
+dqn_fail_widget = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
 button_nm   = Button(label='Replay optimization', width=600)
 button_nm.on_click(play_animation_nm)
 button_dqn  = Button(label='Replay optimization', width=600)
 button_dqn.on_click(play_animation_dqn)
 
+dqn_widget  = pn.WidgetBox(
+                dqn_idx_widget,
+                dqn_val_widget,
+                dqn_fail_widget,
+                width       = 600,
+                background  = '#FFFFFF'
+                )
+nm_widget   = pn.WidgetBox(
+                nm_idx_widget,
+                nm_val_widget,
+                nm_fail_widget,
+                width       = 600,
+                background  = '#FFFFFF'
+                )
 pn.Column(
     "# Optimal pump operation with reinforcement learning",
     pn.Row(
@@ -441,8 +477,8 @@ pn.Column(
                 optimizer.plot_dqn
                 ),
             pn.Row(
-                pn.WidgetBox(optimizer.read_dqn_rew, width=200),
-                pn.WidgetBox(optimizer.read_dqn_evals, width=200)
+                pn.WidgetBox(optimizer.read_dqn_rew, width=300),
+                pn.WidgetBox(optimizer.read_dqn_evals, width=300)
                 )
             ),
         pn.Column(
@@ -451,8 +487,8 @@ pn.Column(
                 optimizer.plot_nm
                 ),
             pn.Row(
-                pn.WidgetBox(optimizer.read_nm_rew, width=200),
-                pn.WidgetBox(optimizer.read_nm_evals, width=200)
+                pn.WidgetBox(optimizer.read_nm_rew, width=300),
+                pn.WidgetBox(optimizer.read_nm_evals, width=300)
                 )
             )
         ),
@@ -460,21 +496,13 @@ pn.Column(
         pn.Column(
             button_dqn,
             pn.Row(
-                pn.Column(
-                    dqn_idx_widget,
-                    dqn_val_widget,
-                    dqn_fail_widget
-                    )
+                dqn_widget
                 )
             ),
         pn.Column(
             button_nm,
             pn.Row(
-                pn.Column(
-                    nm_idx_widget,
-                    nm_val_widget,
-                    nm_fail_widget
-                    )
+                nm_widget
                 )
             )
         ),

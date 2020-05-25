@@ -81,8 +81,10 @@ class environment_wrapper(param.Parameterized):
         objects = ['Original speeds', 'Randomized speeds']
         )
     act_load    = param.Action(
-        lambda x: x.param.trigger('act_load'), label='Load water distribution system')
-    
+        lambda x: x.param.trigger('act_load'),
+        label   = 'Load water distribution system'
+        )
+
     def __init__(self):
         self.loaded_wds = ''
         self.head_lmt_lo= 15
@@ -157,6 +159,9 @@ class environment_wrapper(param.Parameterized):
 
     @param.depends('act_load')
     def load_wds(self):
+        global response_load, res_box_opti
+        response_load.value     = 'Loading, please wait.'
+        res_box_load.background = '#FF0000'
         self.load_env(
             self.sel_wds,
             self.sel_dmd == 'Original demands',
@@ -166,12 +171,14 @@ class environment_wrapper(param.Parameterized):
 
         plot_data   = assemble_plot_data(wrapper.env.wds.junctions.head)
         self.plot   = build_plot_from_data(plot_data, self.dmd_lo, self.dmd_hi, 'm^3/h', figtitle='Nodal demand')
+        response_load.value     = 'Ready.'
+        res_box_load.background = '#FFFFFF'
         return self.plot
 
 class optimize_speeds(param.Parameterized):
     act_opti    = param.Action(
         lambda x: x.param.trigger('act_opti'),
-        label='Optimize pump speeds'
+        label   = 'Optimize pump speeds'
         )
 
     def __init__(self):
@@ -244,6 +251,8 @@ class optimize_speeds(param.Parameterized):
 
     @param.depends('act_opti')
     def plot_dqn(self):
+        response_opti.value     = 'Computing, please wait.'
+        res_box_opti.background = '#FF0000'
         self.store_bc()
         self.call_dqn()
         self.rew_dqn    = wrapper.env.get_state_value()
@@ -253,10 +262,14 @@ class optimize_speeds(param.Parameterized):
         else:
             plot    = build_plot_from_data(self.dqn_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
         self.restore_bc()
+        response_opti.value     = 'Ready.'
+        res_box_opti.background = '#FFFFFF'
         return plot
 
     @param.depends('act_opti')
     def plot_nm(self):
+        response_opti.value     = 'Computing, please wait.'
+        res_box_opti.background = '#FF0000'
         self.store_bc()
         self.call_nm()
         self.rew_nm = wrapper.env.get_state_value()
@@ -266,11 +279,12 @@ class optimize_speeds(param.Parameterized):
         else:
             plot    = build_plot_from_data(self.nm_dta, wrapper.head_lmt_lo, wrapper.head_lmt_hi, title='m', figtitle='Nodal head')
         self.restore_bc()
+        response_opti.value     = 'Ready.'
+        res_box_opti.background = '#FFFFFF'
         return plot
 
     @param.depends('act_opti')
     def read_dqn_rew(self):
-        #return self.rew_dqn
         return 'Final state value: {:.3f}'.format(self.hist_val_dqn[-1])
 
     @param.depends('act_opti')
@@ -279,7 +293,6 @@ class optimize_speeds(param.Parameterized):
 
     @param.depends('act_opti')
     def read_dqn_evals(self):
-        #return wrapper.env.steps
         return 'Total steps: {}'.format(len(self.hist_val_dqn))
 
     @param.depends('act_opti')
@@ -427,6 +440,8 @@ nm_fail_widget  = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
 dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=300)
 dqn_val_widget  = pn.widgets.TextInput(value='State value: ', width=300)
 dqn_fail_widget = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
+response_load   = pn.widgets.TextInput(value='', width=200)
+response_opti   = pn.widgets.TextInput(value='', width=200)
 button_nm   = Button(label='Replay optimization', width=600)
 button_nm.on_click(play_animation_nm)
 button_dqn  = Button(label='Replay optimization', width=600)
@@ -444,6 +459,18 @@ nm_widget   = pn.WidgetBox(
                 nm_val_widget,
                 nm_fail_widget,
                 width       = 600,
+                background  = '#FFFFFF'
+                )
+res_box_load= pn.WidgetBox(
+                '',
+                width   = 30,
+                height  = 30,
+                background  = '#FFFFFF'
+                )
+res_box_opti= pn.WidgetBox(
+                '',
+                width   = 30,
+                height  = 30,
                 background  = '#FFFFFF'
                 )
 pn.Column(
@@ -465,11 +492,19 @@ pn.Column(
                     'sel_spd': pn.widgets.RadioButtonGroup
                     }
                 ),
+            pn.Row(
+                response_load,
+                res_box_load
+                )
             ),
         wrapper.load_wds
         ),
     '## Optimizing pump speeds',
-    pn.panel(optimizer.param, show_labels=False, show_name=False, margin=0),
+    pn.Row(
+        pn.panel(optimizer.param, show_labels=False, show_name=False, margin=0, width=500),
+        response_opti,
+        res_box_opti
+        ),
     pn.Row(
         pn.Column(
             '### Deep Q-Network',

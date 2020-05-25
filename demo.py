@@ -409,7 +409,7 @@ demo_paper  = pn.pane.Markdown("""
     )
 demo_acknowledgment = pn.pane.Markdown("""
     ### Acknowledgment
-    The research presented in this paper has been supported by the BME-Artificial Intelligence FIKP grant of Ministry of Human Resources (BME FIKP-MI/SC).
+    The research has been supported by the BME-Artificial Intelligence FIKP grant of Ministry of Human Resources (BME FIKP-MI/SC).
     """,
     width   = 1200
     )

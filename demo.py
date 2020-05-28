@@ -293,11 +293,12 @@ class optimize_speeds(param.Parameterized):
 
     @param.depends('act_opti')
     def read_dqn_evals(self):
+        play_animation_dqn()
         return 'Total steps: {}'.format(len(self.hist_val_dqn))
 
     @param.depends('act_opti')
     def read_nm_evals(self):
-        #return self.nm_evals
+        play_animation_nm()
         return 'Total steps: {}'.format(len(self.hist_val_nm))
 
 def animate_nm_plot():

@@ -7,7 +7,6 @@ dependencies:
 - numpy
 - scikit-learn
 - pyyaml
-- jupyter
 - bokeh
 - tensorflow=1.14
 - panel

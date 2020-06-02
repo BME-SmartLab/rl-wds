@@ -190,11 +190,12 @@ class optimize_speeds(param.Parameterized):
         self.rew_nm     = 0
         self.hist_nm    = []
         self.hist_val_nm= [0]
-        self_hist_fail_counter_nm   = []
+        self.hist_fail_counter_nm   = []
+        self.failed_steps_nm    = 0
         self.rew_dqn        = 0
         self.hist_dqn       = []
         self.hist_val_dqn   = [0]
-        self_hist_fail_counter_dqn  = []
+        self.hist_fail_counter_dqn  = []
         self.cpu_time_nm    = 0
         self.cpu_time_dqn   = 0
 
@@ -223,6 +224,12 @@ class optimize_speeds(param.Parameterized):
         self.hist_val_dqn   = self.hist_val_dqn[:-3]
         self.hist_fail_counter_dqn  = self.hist_fail_counter_dqn[:-3]
         self.cpu_time_dqn   = sum(self.cpu_time_dqn[:-3])
+        fail_counter    = np.array(self.hist_fail_counter_dqn)
+        if np.isin(0, fail_counter):
+            trunc   = fail_counter[np.where(fail_counter    == 0)[0][0]:]
+            self.failed_steps_dqn   = np.sum(trunc != 0)
+        else:
+            self.failed_steps_dqn   = len(self.hist_fail_counter_dqn)
 
     def callback_nm(self, fun):
         self.hist_nm.append(wrapper.env.wds.junctions.head)
@@ -253,6 +260,12 @@ class optimize_speeds(param.Parameterized):
             )
         self.cpu_time_nm    = time.time()-self.cpu_time_nm
         self.nm_evals   = result.nit
+        fail_counter    = np.array(self.hist_fail_counter_nm)
+        if np.isin(0, fail_counter):
+            trunc   = fail_counter[np.where(fail_counter    == 0)[0][0]:]
+            self.failed_steps_nm    = np.sum(trunc != 0)
+        else:
+            self.failed_steps_nm    = len(self.hist_fail_counter_nm)
 
     def store_bc(self):
         self.orig_demands   = wrapper.env.wds.junctions.basedemand
@@ -339,7 +352,7 @@ def animate_nm_plot():
 def play_animation_nm():
     global call_id_nm
     cpu_time_nm.value   = 'CPU time (simulation required): {:.3f} s'.format(optimizer.cpu_time_nm)
-    nm_fail_sum.value   = 'High-pressure nodes (cumulative): {}'.format(sum(optimizer.hist_fail_counter_nm))
+    nm_fail_sum.value   = 'Failed steps: {}'.format(optimizer.failed_steps_nm)
     if button_nm.label == 'Replay optimization':
         button_nm.label = 'Pause'
         call_id_nm      = curdoc().add_periodic_callback(animate_nm_plot, 500)
@@ -372,7 +385,7 @@ def animate_dqn_plot():
 def play_animation_dqn():
     global call_id_dqn
     cpu_time_dqn.value  = 'CPU time (simulation not required): {:.3f} s'.format(optimizer.cpu_time_dqn)
-    dqn_fail_sum.value  = 'High-pressure nodes (cumulative): {}'.format(sum(optimizer.hist_fail_counter_dqn[:-3]))
+    dqn_fail_sum.value  = 'Failed steps: {}'.format(optimizer.failed_steps_dqn)
     if button_dqn.label == 'Replay optimization':
         button_dqn.label= 'Pause'
         call_id_dqn     = curdoc().add_periodic_callback(animate_dqn_plot, 500)
@@ -455,11 +468,11 @@ call_id_dqn = 0
 nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=300)
 nm_val_widget   = pn.widgets.TextInput(value='State value: ', width=300)
 nm_fail_widget  = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
-nm_fail_sum     = pn.widgets.TextInput(value='High-pressure nodes (cumulative): ', width=300)
+nm_fail_sum     = pn.widgets.TextInput(value='Failed steps: ', width=300)
 dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=300)
 dqn_val_widget  = pn.widgets.TextInput(value='State value: ', width=300)
 dqn_fail_widget = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
-dqn_fail_sum    = pn.widgets.TextInput(value='High-pressure nodes (cumulative): ', width=300)
+dqn_fail_sum    = pn.widgets.TextInput(value='Failed steps: ', width=300)
 cpu_time_nm = pn.widgets.TextInput(value='CPU time (simulation required): ', width=300)
 cpu_time_dqn= pn.widgets.TextInput(value='CPU time (simulation not required): ', width=300)
 response_load   = pn.widgets.TextInput(value='', width=200)

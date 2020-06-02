@@ -195,6 +195,8 @@ class optimize_speeds(param.Parameterized):
         self.hist_dqn       = []
         self.hist_val_dqn   = [0]
         self_hist_fail_counter_dqn  = []
+        self.cpu_time_nm    = 0
+        self.cpu_time_dqn   = 0
 
     def call_dqn(self):
         wrapper.env.wds.solve()
@@ -206,8 +208,11 @@ class optimize_speeds(param.Parameterized):
         invalid_heads_count = (np.count_nonzero(wrapper.env.wds.junctions.head < wrapper.head_lmt_lo) +
             np.count_nonzero(wrapper.env.wds.junctions.head > wrapper.head_lmt_hi))
         self.hist_fail_counter_dqn= [invalid_heads_count]
+        self.cpu_time_dqn   = []
         while not wrapper.env.done:
+            start_time  = time.time()
             act, _              = wrapper.model.predict(obs, deterministic=True)
+            self.cpu_time_dqn.append(time.time()-start_time)
             obs, reward, _, _   = wrapper.env.step(act, training=False)
             self.hist_dqn.append(wrapper.env.wds.junctions.head)
             self.hist_val_dqn.append(wrapper.env.get_state_value())
@@ -217,6 +222,7 @@ class optimize_speeds(param.Parameterized):
         self.hist_dqn       = self.hist_dqn[:-3]
         self.hist_val_dqn   = self.hist_val_dqn[:-3]
         self.hist_fail_counter_dqn  = self.hist_fail_counter_dqn[:-3]
+        self.cpu_time_dqn   = sum(self.cpu_time_dqn[:-3])
 
     def callback_nm(self, fun):
         self.hist_nm.append(wrapper.env.wds.junctions.head)
@@ -237,6 +243,7 @@ class optimize_speeds(param.Parameterized):
         invalid_heads_count = (np.count_nonzero(wrapper.env.wds.junctions.head < wrapper.head_lmt_lo) +
             np.count_nonzero(wrapper.env.wds.junctions.head > wrapper.head_lmt_hi))
         self.hist_fail_counter_nm = [invalid_heads_count]
+        self.cpu_time_nm    = time.time()
         result  = nm(
             wrapper.env.reward_to_scipy,
             init_guess,
@@ -244,6 +251,7 @@ class optimize_speeds(param.Parameterized):
             options = options,
             callback= self.callback_nm
             )
+        self.cpu_time_nm    = time.time()-self.cpu_time_nm
         self.nm_evals   = result.nit
 
     def store_bc(self):
@@ -330,6 +338,8 @@ def animate_nm_plot():
 
 def play_animation_nm():
     global call_id_nm
+    cpu_time_nm.value   = 'CPU time (simulation required): {:.3f} s'.format(optimizer.cpu_time_nm)
+    nm_fail_sum.value   = 'High-pressure nodes (cumulative): {}'.format(sum(optimizer.hist_fail_counter_nm))
     if button_nm.label == 'Replay optimization':
         button_nm.label = 'Pause'
         call_id_nm      = curdoc().add_periodic_callback(animate_nm_plot, 500)
@@ -361,6 +371,8 @@ def animate_dqn_plot():
 
 def play_animation_dqn():
     global call_id_dqn
+    cpu_time_dqn.value  = 'CPU time (simulation not required): {:.3f} s'.format(optimizer.cpu_time_dqn)
+    dqn_fail_sum.value  = 'High-pressure nodes (cumulative): {}'.format(sum(optimizer.hist_fail_counter_dqn[:-3]))
     if button_dqn.label == 'Replay optimization':
         button_dqn.label= 'Pause'
         call_id_dqn     = curdoc().add_periodic_callback(animate_dqn_plot, 500)
@@ -443,9 +455,13 @@ call_id_dqn = 0
 nm_idx_widget   = pn.widgets.TextInput(value='Step: ', width=300)
 nm_val_widget   = pn.widgets.TextInput(value='State value: ', width=300)
 nm_fail_widget  = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
+nm_fail_sum     = pn.widgets.TextInput(value='High-pressure nodes (cumulative): ', width=300)
 dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=300)
 dqn_val_widget  = pn.widgets.TextInput(value='State value: ', width=300)
 dqn_fail_widget = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
+dqn_fail_sum    = pn.widgets.TextInput(value='High-pressure nodes (cumulative): ', width=300)
+cpu_time_nm = pn.widgets.TextInput(value='CPU time (simulation required): ', width=300)
+cpu_time_dqn= pn.widgets.TextInput(value='CPU time (simulation not required): ', width=300)
 response_load   = pn.widgets.TextInput(value='', width=200)
 response_opti   = pn.widgets.TextInput(value='', width=200)
 button_nm   = Button(label='Replay optimization', width=600)
@@ -460,6 +476,8 @@ dqn_widget  = pn.WidgetBox(
                 dqn_idx_widget,
                 dqn_val_widget,
                 dqn_fail_widget,
+                dqn_fail_sum,
+                cpu_time_dqn,
                 width       = 600,
                 background  = '#FFFFFF'
                 )
@@ -467,6 +485,8 @@ nm_widget   = pn.WidgetBox(
                 nm_idx_widget,
                 nm_val_widget,
                 nm_fail_widget,
+                nm_fail_sum,
+                cpu_time_nm,
                 width       = 600,
                 background  = '#FFFFFF'
                 )

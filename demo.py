@@ -160,6 +160,7 @@ class environment_wrapper(param.Parameterized):
     @param.depends('act_load')
     def load_wds(self):
         global response_load, res_box_opti
+        global num_of_juncs, num_of_pipes, num_of_pumps
         response_load.value     = 'Loading, please wait.'
         res_box_load.background = '#FF0000'
         self.load_env(
@@ -173,6 +174,10 @@ class environment_wrapper(param.Parameterized):
         self.plot   = build_plot_from_data(plot_data, self.dmd_lo, self.dmd_hi, 'm^3/h', figtitle='Nodal demand')
         response_load.value     = 'Ready.'
         res_box_load.background = '#FFFFFF'
+
+        num_of_juncs.value  = 'Number of junctions: {}'.format(str(len(wrapper.env.wds.junctions.uid)))
+        num_of_pipes.value  = 'Number of pipes: {}'.format(str(len(wrapper.env.wds.pipes.uid)))
+        num_of_pumps.value  = 'Number of pump stations: {}'.format(str(len(wrapper.env.pumpGroups)))
         return self.plot
 
 class optimize_speeds(param.Parameterized):
@@ -447,6 +452,9 @@ button_nm   = Button(label='Replay optimization', width=600)
 button_nm.on_click(play_animation_nm)
 button_dqn  = Button(label='Replay optimization', width=600)
 button_dqn.on_click(play_animation_dqn)
+num_of_juncs    = pn.widgets.TextInput(value='Number of junctions: ', width=230)
+num_of_pipes    = pn.widgets.TextInput(value='Number of pipes: ', width=230)
+num_of_pumps    = pn.widgets.TextInput(value='Number of pump stations: ', width=230)
 
 dqn_widget  = pn.WidgetBox(
                 dqn_idx_widget,
@@ -496,6 +504,11 @@ pn.Column(
             pn.Row(
                 response_load,
                 res_box_load
+                ),
+            pn.Column(
+                num_of_juncs,
+                num_of_pipes,
+                num_of_pumps,
                 )
             ),
         wrapper.load_wds

@@ -359,6 +359,8 @@ def play_animation_nm():
     else:
         button_nm.label = 'Replay optimization'
         curdoc().remove_periodic_callback(call_id_nm)
+    comp_time.value     = 'Speedup compared to Nelder-Mead: {:.1f}%'.format(optimizer.cpu_time_nm/optimizer.cpu_time_dqn*100)
+    performance.value   = 'Final state value compared to Nelder-Mead: {:.1f}%'.format(optimizer.hist_val_dqn[-1]/optimizer.hist_val_nm[-1]*100)
 
 def animate_dqn_plot():
     global hist_idx_dqn, call_id_dqn
@@ -473,8 +475,10 @@ dqn_idx_widget  = pn.widgets.TextInput(value='Step: ', width=300)
 dqn_val_widget  = pn.widgets.TextInput(value='State value: ', width=300)
 dqn_fail_widget = pn.widgets.TextInput(value='High-pressure nodes: ', width=300)
 dqn_fail_sum    = pn.widgets.TextInput(value='Failed steps: ', width=300)
-cpu_time_nm = pn.widgets.TextInput(value='CPU time (simulation required): ', width=300)
-cpu_time_dqn= pn.widgets.TextInput(value='CPU time (simulation not required): ', width=300)
+cpu_time_nm     = pn.widgets.TextInput(value='CPU time (simulation required): ', width=300)
+cpu_time_dqn    = pn.widgets.TextInput(value='CPU time (simulation not required): ', width=300)
+comp_time       = pn.widgets.TextInput(value='Computation time compared to Nelder-Mead: ', width=400)
+performance     = pn.widgets.TextInput(value='Final state value compared to Nelder-Mead: ', width=400)
 response_load   = pn.widgets.TextInput(value='', width=200)
 response_opti   = pn.widgets.TextInput(value='', width=200)
 button_nm   = Button(label='Replay optimization', width=600)
@@ -489,8 +493,6 @@ dqn_widget  = pn.WidgetBox(
                 dqn_idx_widget,
                 dqn_val_widget,
                 dqn_fail_widget,
-                dqn_fail_sum,
-                cpu_time_dqn,
                 width       = 600,
                 background  = '#FFFFFF'
                 )
@@ -498,8 +500,20 @@ nm_widget   = pn.WidgetBox(
                 nm_idx_widget,
                 nm_val_widget,
                 nm_fail_widget,
+                width       = 600,
+                background  = '#FFFFFF'
+                )
+nm_sum_wid  = pn.WidgetBox(
                 nm_fail_sum,
                 cpu_time_nm,
+                width       = 600,
+                background  = '#FFFFFF'
+                )
+dqn_sum_wid = pn.WidgetBox(
+                dqn_fail_sum,
+                cpu_time_dqn,
+                comp_time,
+                performance,
                 width       = 600,
                 background  = '#FFFFFF'
                 )
@@ -589,9 +603,23 @@ pn.Column(
                 )
             )
         ),
-        pn.Row(
-            demo_repo,
-            demo_paper
-            ),
-        demo_acknowledgment
+    pn.pane.Markdown("""
+        ### Summary
+        Definition of failed steps: initial conditions generated randomly can lead to initial states where some of the junctions are in the undesirable high-pressure region.
+        The algorithms fail in a timestep when they govern the system from a healthy state to a high-pressure state.
+        All of these kind of steps are summed up.
+        The Nelder-Mead method is an optimization algorithm (not a controller) with a combined objective function that penalizes high-pressure states.
+        Meanwhile, the DQN agent was penalized during training for high-pressure states.
+        Hence, the expectation is that the DQN agent can keep the number of failed steps low even when Nelder-Mead cannot.
+        """
+        ),
+    pn.Row(
+        dqn_sum_wid,
+        nm_sum_wid,
+        ),
+    pn.Row(
+        demo_repo,
+        demo_paper
+        ),
+    demo_acknowledgment
     ).servable()

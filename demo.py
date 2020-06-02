@@ -298,11 +298,11 @@ class optimize_speeds(param.Parameterized):
 
     @param.depends('act_opti')
     def read_dqn_evals(self):
-        play_animation_dqn()
         return 'Total steps: {}'.format(len(self.hist_val_dqn))
 
     @param.depends('act_opti')
     def read_nm_evals(self):
+        play_animation_dqn()
         play_animation_nm()
         return 'Total steps: {}'.format(len(self.hist_val_nm))
 
@@ -506,6 +506,7 @@ pn.Column(
                 res_box_load
                 ),
             pn.Column(
+                '### Properties',
                 num_of_juncs,
                 num_of_pipes,
                 num_of_pumps,

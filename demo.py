@@ -445,13 +445,15 @@ demo_repo   = pn.pane.Markdown("""
     ### Code repository
     [https://github.com/BME-SmartLab/rl-wds](https://github.com/BME-SmartLab/rl-wds)
     """,
-    width   = 600
+    width   = 400
     )
 demo_paper  = pn.pane.Markdown("""
     ### Paper
-    Under revision in the Journal of Water Resources Planning and Management.
+    Hajgató, G.; Gyires-Tóth, B.; Paál, G. *Deep Reinforcement Learning for Real-Time Optimization of Pumps in Water Distribution Systems*.
+    Journal of Water Resources Planning and Management (in production),
+    DOI: [10.1061/(ASCE)WR.1943-5452.0001287](https://doi.org/10.1061/(ASCE)WR.1943-5452.0001287).
     """,
-    width   = 600
+    width   = 800
     )
 demo_acknowledgment = pn.pane.Markdown("""
     ### Acknowledgment
@@ -605,9 +607,12 @@ pn.Column(
         ),
     pn.pane.Markdown("""
         ### Summary
-        Definition of failed steps: initial conditions generated randomly can lead to initial states where some of the junctions are in the undesirable high-pressure region.
+        #####Definition of failed steps
+        Initial conditions generated randomly can lead to initial states where some of the junctions are in the undesirable high-pressure region.
         The algorithms fail in a timestep when they govern the system from a healthy state to a high-pressure state.
         All of these kind of steps are summed up.
+        If one of the algorithms cannot set not even one non-high-pressure scene during optimization, then all of the steps are summed up.
+
         The Nelder-Mead method is an optimization algorithm (not a controller) with a combined objective function that penalizes high-pressure states.
         Meanwhile, the DQN agent was penalized during training for high-pressure states.
         Hence, the expectation is that the DQN agent can keep the number of failed steps low even when Nelder-Mead cannot.

@@ -9,7 +9,7 @@ RUN apt-get update \
     && apt-get install libgtk2.0-dev -y \
     && apt-get clean
 
-WORKDIR /demo.bokeh.org
+WORKDIR /demo
 
 COPY ./requirements.txt .
 RUN pip install --upgrade pip && \

@@ -7,6 +7,7 @@ ENV BOKEH_RESOURCES=cdn
 RUN apt-get update \
     && apt-get install gcc -y \
     && apt-get install libgtk2.0-dev -y \
+    && apt install libgl1-mesa-glx -y \
     && apt-get clean
 
 WORKDIR /demo

@@ -1,4 +1,4 @@
-<img src="banner.png" align="right" width="35%"/>
+<img src="banner.png" align="right" width="30%"/>
 
 # rl-wds
 RL-WDS is a framework to train agents to set optimal pump speeds in real-time in smart water distribution systems (WDSs). A fully connected dueling deep q-network observes nodal pressures and commands pumps speeds accordingly. An optimization algorithm guides the training, but the procedure allows the agent to overcome the master algorithm in performance. Pressure can be extracted from sensory data and simulation data as well. The agent does not need hydraulic simulations in the former situation; hence, the control is real-time. In the latter situation, the agent needs remarkably less hydraulic runs to reach the optimum setting even in a multi-pump WDS.

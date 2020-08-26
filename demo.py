@@ -449,8 +449,8 @@ demo_repo   = pn.pane.Markdown("""
     )
 demo_paper  = pn.pane.Markdown("""
     ### Paper
-    Hajgató, G.; Gyires-Tóth, B.; Paál, G. *Deep Reinforcement Learning for Real-Time Optimization of Pumps in Water Distribution Systems*.
-    Journal of Water Resources Planning and Management (in production),
+    Hajgató, G.; Gyires-Tóth, B.; Paál, G. 2020. "Deep Reinforcement Learning for Real-Time Optimization of Pumps in Water Distribution Systems."
+    *Journal of Water Resources Planning and Management*. 146 (11): 04020079.
     DOI: [10.1061/(ASCE)WR.1943-5452.0001287](https://doi.org/10.1061/(ASCE)WR.1943-5452.0001287).
     """,
     width   = 800

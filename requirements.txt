@@ -16,6 +16,7 @@ tornado==6.0.3
 scikit-learn
 tensorflow==1.15.4
 panel==0.9.5
+param==1.9.3
 gym==0.17.2
 epynet==1.1
 stable-baselines==2.10.0

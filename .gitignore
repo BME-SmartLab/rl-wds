@@ -6,3 +6,6 @@
 *.swp
 *.rpt
 *.zip
+
+!experiments/models/anytownHO1-best.zip
+!experiments/models/dtownHO1-best.zip

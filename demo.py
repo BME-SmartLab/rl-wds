@@ -117,6 +117,32 @@ class environment_wrapper(param.Parameterized):
                 pipe_z.append(pipe.from_node.elevation)
                 pipe_z.append(pipe.to_node.elevation)
                 pipe_z.append(float('nan'))
+        for pump in wds.pumps:
+            if (pipe.from_node.index in list(wds.junctions.index)) and (pipe.to_node.index in list(wds.junctions.index)):
+                pipe_x.append(pump.from_node.coordinates[0])
+                pipe_x.append(pump.to_node.coordinates[0])
+                pipe_x.append(float('nan'))
+
+                pipe_y.append(pump.from_node.coordinates[1])
+                pipe_y.append(pump.to_node.coordinates[1])
+                pipe_y.append(float('nan'))
+
+                pipe_z.append(pump.from_node.elevation)
+                pipe_z.append(pump.to_node.elevation)
+                pipe_z.append(float('nan'))
+        for valve in wds.valves:
+            if (pipe.from_node.index in list(wds.junctions.index)) and (pipe.to_node.index in list(wds.junctions.index)):
+                pipe_x.append(valve.from_node.coordinates[0])
+                pipe_x.append(valve.to_node.coordinates[0])
+                pipe_x.append(float('nan'))
+
+                pipe_y.append(valve.from_node.coordinates[1])
+                pipe_y.append(valve.to_node.coordinates[1])
+                pipe_y.append(float('nan'))
+
+                pipe_z.append(valve.from_node.elevation)
+                pipe_z.append(valve.to_node.elevation)
+                pipe_z.append(float('nan'))
         return {'x': pipe_x, 'y': pipe_y, 'z': pipe_z}
 
     def load_env(self, wds_name, resetOrigDemands, resetOrigPumpSpeeds):

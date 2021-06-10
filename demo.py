@@ -31,7 +31,7 @@ def assemble_plot_data(junc_prop):
         )
     return plot_data
 
-def build_plot_from_data(data, min_prop=None, max_prop=None, title=None, figtitle=None):
+def build_plot_from_data(data, min_prop=None, max_prop=None, title=None, figtitle=None, palette='Viridis10'):
     if not min_prop:
         min_prop = min(data.data['junc_prop'])
     if not max_prop:
@@ -39,12 +39,12 @@ def build_plot_from_data(data, min_prop=None, max_prop=None, title=None, figtitl
 
     mapper = linear_cmap(
         field_name  = 'junc_prop',
-        palette     = "Viridis10",
+        palette     = palette,
         low         = min_prop,
         high        = max_prop
         )
     cmapper = LinearColorMapper(
-        palette = "Viridis10",
+        palette = palette,
         low     = min_prop,
         high    = max_prop
         )
@@ -197,7 +197,7 @@ class environment_wrapper(param.Parameterized):
         self.env.reset(training=True)
 
         plot_data   = assemble_plot_data(wrapper.env.wds.junctions.head)
-        self.plot   = build_plot_from_data(plot_data, self.dmd_lo, self.dmd_hi, 'm^3/h', figtitle='Nodal demand')
+        self.plot   = build_plot_from_data(plot_data, self.dmd_lo, self.dmd_hi, 'm^3/h', figtitle='Nodal demand', palette='Magma10')
         response_load.value     = 'Ready.'
         res_box_load.background = '#FFFFFF'
 

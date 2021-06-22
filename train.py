@@ -5,10 +5,10 @@ import glob
 import yaml
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from stable_baselines.deepq.policies import FeedForwardPolicy
-from stable_baselines import DQN
-from stable_baselines.common.schedules import PiecewiseSchedule
+import torch
+from stable_baselines3.dqn.policies import DQNPolicy
+from stable_baselines3 import DQN
+#from stable_baselines3.common.schedules import PiecewiseSchedule
 from wdsEnv import wds
 
 parser  = argparse.ArgumentParser()
@@ -47,14 +47,14 @@ env = wds(
         reset_orig_demands      = hparams['env']['resetOrigDemands']
 )
 
-class CustomPolicy(FeedForwardPolicy):
+class CustomPolicy(DQNPolicy):
     def __init__(self, *args, **kwargs):
         super(CustomPolicy, self).__init__(*args, **kwargs,
-            layers      = hparams['model']['layers'],
-            dueling     = True,
-            layer_norm  = False,
-            act_fun     = tf.nn.relu,
-            feature_extraction  = 'mlp')
+            net_arch    = hparams['model']['layers'],
+            #dueling     = True,
+            #layer_norm  = False,
+            activation_fn= torch.nn.ReLU)
+            #feature_extraction  = 'mlp')
 
 def init_trn_history():
     hist_header = ['episodeId', 'stepId', 'reward']
@@ -147,7 +147,8 @@ def play_scenes(scenes, history, path_to_history, tst=False):
         df_view['nBump']        = env.n_bump
         df_view['nSiesta']      = env.n_siesta
         df_view['nStep']        = env.steps
-        df_view['explorationFactor']= model.exploration.value(step_id)
+        #df_view['explorationFactor']= model.exploration.value(step_id)
+        df_view['explorationFactor']= np.nan
         for i in range(env.dimensions):
             df_view['speedOfGrp'+str(i)] = pump_speeds[env.steps-1, i]
     avg_reward  = cummulated_reward / (scene_id+1)
@@ -196,11 +197,11 @@ vld_history.to_hdf(pathToVldHistoryDB, key=runId, mode='w')
 
 totalSteps  = hparams['training']['totalSteps']
 initLrnRate = hparams['training']['initLrnRate']
-lr_schedule = PiecewiseSchedule(([
-                (0, initLrnRate),
-                (1*totalSteps // 2, initLrnRate * .1),
-                (3*totalSteps // 4, initLrnRate * .01)
-]))
+#lr_schedule = PiecewiseSchedule(([
+#                (0, initLrnRate),
+#                (1*totalSteps // 2, initLrnRate * .1),
+#                (3*totalSteps // 4, initLrnRate * .01)
+#]))
 model   = DQN(
     policy                  = CustomPolicy,
     env                     = env,
@@ -213,12 +214,8 @@ model   = DQN(
     learning_starts         = hparams['training']['learningStarts'],
     exploration_fraction    = .95,
     exploration_final_eps   = .0,
-    param_noise             = False,
-    prioritized_replay      = False,
     tensorboard_log         = pathToLog,
-    full_tensorboard_log    = True,
-    seed                    = args.seed,
-    n_cpu_tf_sess           = args.nproc)
+    seed                    = args.seed)
 model.learn(
     total_timesteps = hparams['training']['totalSteps'],
     log_interval    = hparams['training']['totalSteps'] // 50,

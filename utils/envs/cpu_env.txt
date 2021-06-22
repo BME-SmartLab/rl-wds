@@ -1,0 +1,14 @@
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.9.0+cpu
+torchvision==0.10.0+cpu
+torchaudio==0.9.0
+numpy
+scipy
+scikit-learn
+pandas
+tables
+pyyaml
+deap
+gym
+epynet
+stable-baselines3

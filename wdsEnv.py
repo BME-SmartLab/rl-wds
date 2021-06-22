@@ -85,6 +85,7 @@ class wds():
         # ----- ----- ----- ----- -----
         self.maxReward   = +1
         self.minReward   = -1
+        self.reward_range   = 2
 
         # Inner variables
         self.spec           = None

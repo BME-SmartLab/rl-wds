@@ -5,10 +5,13 @@ import glob
 import yaml
 import numpy as np
 import pandas as pd
+import gym
 import torch
+import torch.nn as nn
 from stable_baselines3.dqn.policies import DQNPolicy
 from stable_baselines3 import DQN
 #from stable_baselines3.common.schedules import PiecewiseSchedule
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from wdsEnv import wds
 
 parser  = argparse.ArgumentParser()
@@ -55,6 +58,22 @@ class CustomPolicy(DQNPolicy):
             #layer_norm  = False,
             activation_fn= torch.nn.ReLU)
             #feature_extraction  = 'mlp')
+
+class customFeatureExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space: gym.spaces.Box, features_dim: int=12):
+        super(customFeatureExtractor, self).__init__(observation_space, features_dim)
+        n_input_channels    = observation_space.shape[0]
+        self.model  = nn.Sequential(
+            nn.Linear(n_input_channels, 48),
+            nn.ReLU(),
+            nn.Linear(48, 32),
+            nn.ReLU(),
+            nn.Linear(32, 12),
+            nn.ReLU()
+            )
+
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        return self.model(observations)
 
 def init_trn_history():
     hist_header = ['episodeId', 'stepId', 'reward']
@@ -202,8 +221,14 @@ initLrnRate = hparams['training']['initLrnRate']
 #                (1*totalSteps // 2, initLrnRate * .1),
 #                (3*totalSteps // 4, initLrnRate * .01)
 #]))
+policy_kwargs   = dict(
+    features_extractor_class    = customFeatureExtractor,
+    features_extractor_kwargs   = dict(features_dim=12),
+    )
 model   = DQN(
-    policy                  = CustomPolicy,
+    #policy                  = CustomPolicy,
+    policy                  = 'MlpPolicy',
+    policy_kwargs           = policy_kwargs,
     env                     = env,
     verbose                 = 1,
     #learning_rate           = lr_schedule.value(step_id),

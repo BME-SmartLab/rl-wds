@@ -6,13 +6,7 @@ RL-WDS is a framework to train agents to set optimal pump speeds in real-time in
 A detailed explanation is given in the paper of Hajgató, G.; Gyires-Tóth, B.; Paál, G. 2020. "Deep Reinforcement Learning for Real-Time Optimization of Pumps in Water Distribution Systems." *Journal of Water Resources Planning and Management*. 146 (11): 04020079. [10.1061/(ASCE)WR.1943-5452.0001287](https://doi.org/10.1061/(ASCE)WR.1943-5452.0001287) (or see the preprint on arXiv: [2010.06460](https://arxiv.org/abs/2010.06460)).
 
 ## Demo
-A small demo highlights the benefits of the trained agents compared to a classic optimization method on two WDSs.
-
-### Reaching instantly
-An instance of the demo is running [here](http://domino.hds.bme.hu:8080) occasionally.
-
-### Building with Docker
-The demo is containerized with [Docker](https://www.docker.com/). Building a local container is so simple on systems with Docker installed:
+A small demo highlights the benefits of the trained agents compared to a classic optimization method on two WDSs. The demo is containerized with [Docker](https://www.docker.com/). Building a local container is so simple on systems with Docker installed:
 
 1. Clone the repository.
 2. Move to the root of the local repository.

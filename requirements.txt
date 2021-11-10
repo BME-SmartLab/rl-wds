@@ -14,7 +14,7 @@ scipy==1.4.1
 six==1.14.0
 tornado==6.0.3
 scikit-learn
-tensorflow==1.15.4
+tensorflow==2.5.2
 panel==0.9.5
 param==1.9.3
 gym==0.17.2
